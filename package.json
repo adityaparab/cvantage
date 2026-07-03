@@ -14,6 +14,7 @@
     "build:server": "nest build",
     "build:client": "yarn --cwd client build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "prestart": "yarn build:client",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
