@@ -42,7 +42,10 @@ it('PDF embeds Unicode, contact details and additional fields across pages', asy
       'pdftotext',
       ['-', '-'],
       { timeout: 5000 },
-      (error, stdout) => (error ? reject(error) : resolve(stdout)),
+      (error, stdout) =>
+        error
+          ? reject(new Error('PDF text extraction failed'))
+          : resolve(stdout),
     );
     child.stdin!.end(buffer);
   });
