@@ -1,0 +1,43 @@
+name: cvantage-local
+
+services:
+  mongodb:
+    image: mongo:8.0.32
+    command: ['mongod', '--replSet', 'cvantage', '--bind_ip_all']
+    environment:
+      # Local compatibility with Docker kernels 6.19–7.0.13 (SERVER-121912).
+      # Disable the affected allocator optimization, keeping the startup guard.
+      GLIBC_TUNABLES: glibc.pthread.rseq=1
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${LOCAL_MONGODB_PORT:-27018}:27017'
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./init-replica-set.js:/opt/cvantage/init-replica-set.js:ro
+    post_start:
+      - command:
+          [
+            'mongosh',
+            '--nodb',
+            '--quiet',
+            '--file',
+            '/opt/cvantage/init-replica-set.js',
+          ]
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - 'mongodb://127.0.0.1:27017/admin?directConnection=true&serverSelectionTimeoutMS=2000'
+        - --quiet
+        - --eval
+        - "const h = db.hello(); quit(h.setName === 'cvantage' && h.isWritablePrimary ? 0 : 1)"
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+    stop_grace_period: 30s
+
+volumes:
+  mongodb_data:
+  mongodb_config:

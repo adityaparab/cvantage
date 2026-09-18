@@ -6,6 +6,10 @@ Copy `.env.example` to `.env`, populate credentials/model identifiers and a rand
 
 ## Local MongoDB
 
+The recommended local setup is [Docker Compose](../deploy/local/README.md): run `yarn db:up` from the repository root. It automatically initializes a replica set, waits for a writable primary, and preserves data in named volumes. `.env.example` points to this instance on port 27018. Local deployment configuration lives under `deploy/local/`; future Railway configuration is separate.
+
+### Alternative: installed MongoDB server
+
 Use a local MongoDB replica set for transactions. An existing standalone `mongod` does not become a replica set just because the URI contains `replicaSet=cvantage`. The server must start with `--replSet cvantage`, then be initialized.
 
 For an installed MongoDB server and a free port 27017, create a durable, ignored data directory and run from the repository root:
@@ -16,6 +20,8 @@ mongod --dbpath "$PWD/.local-data/mongodb" --replSet cvantage --bind_ip 127.0.0.
 ```
 
 In another terminal: `node scripts/init-mongo.cjs 27017 cvantage`. Wait for the server to elect its primary, then run `yarn dev`. Restart MongoDB with the same data directory, port, and replica-set name after a reboot; initialization is needed only once. Production requires an authenticated deployment; these loopback commands are for local development only.
+
+For this non-Docker alternative, set `MONGODB_URI=mongodb://127.0.0.1:27017/?replicaSet=cvantage` in `.env` instead of the Compose URI.
 
 If another MongoDB already uses port 27017, keep it intact and use port 27018 for this project's instance in both commands. Set `MONGODB_URI=mongodb://127.0.0.1:27018/?replicaSet=cvantage` in `.env`. A separate instance has a separate database; it does not migrate existing data. Never point two MongoDB processes at the same data directory.
 
