@@ -1,2 +1,90 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
-:root{font-family:'DM Sans',system-ui,sans-serif;color:#243b37;background:#f5f4ef;font-synthesis:none;text-rendering:optimizeLegibility}*{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer;background:#245b48;color:white;border:0;border-radius:8px;padding:12px 22px;font-weight:600}button:disabled{opacity:.55;cursor:wait}a{color:inherit}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #b98336;outline-offset:3px}input,textarea,select{display:block;width:100%;padding:12px;border:1px solid #d1d8d2;border-radius:7px;background:#fff;color:#243b37}label{display:block;font-weight:600;margin:20px 0 8px}label input{margin-top:8px}h1,h2{font-family:Manrope,system-ui,sans-serif}h1{font-size:clamp(32px,4.5vw,58px);letter-spacing:-2px;line-height:1.13;font-weight:600}h2{font-size:22px;font-weight:600}.muted,.hint{color:#66716b}.hint{font-size:13px}.error{background:#fce6df;padding:16px;color:#823e31;border-radius:8px}p{line-height:1.6}
+:root {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #243b37;
+  background: #f5f4ef;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+  background: #245b48;
+  color: white;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 22px;
+  font-weight: 600;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+a {
+  color: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #b98336;
+  outline-offset: 3px;
+}
+input,
+textarea,
+select {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d8d2;
+  border-radius: 7px;
+  background: #fff;
+  color: #243b37;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin: 20px 0 8px;
+}
+label input {
+  margin-top: 8px;
+}
+h1,
+h2 {
+  font-family: Manrope, system-ui, sans-serif;
+}
+h1 {
+  font-size: clamp(32px, 4.5vw, 58px);
+  letter-spacing: -2px;
+  line-height: 1.13;
+  font-weight: 600;
+}
+h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+.muted,
+.hint {
+  color: #66716b;
+}
+.hint {
+  font-size: 13px;
+}
+.error {
+  background: #fce6df;
+  padding: 16px;
+  color: #823e31;
+  border-radius: 8px;
+}
+p {
+  line-height: 1.6;
+}

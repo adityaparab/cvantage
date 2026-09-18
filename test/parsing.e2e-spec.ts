@@ -104,6 +104,7 @@ describe('durable worker/judge parsing', () => {
       ownerId: job.ownerId,
       resumeId: job.resumeId,
       revision: 0,
+      expiresAt: new Date(Date.now() + 86400000),
       name: 'Synthetic Applicant',
       email: 'applicant@example.test',
       contactNumber: '+1 555 123 4567',
@@ -134,6 +135,9 @@ describe('durable worker/judge parsing', () => {
       acceptanceSource: 'judge',
     });
     expect(generate).toHaveBeenCalledTimes(4);
+    expect(
+      await db.db.collection('resumePii').findOne({ resumeId: job.resumeId }),
+    ).not.toHaveProperty('expiresAt');
     expect(JSON.stringify(generate.mock.calls)).not.toMatch(
       /Synthetic Applicant|applicant@example|555 123|Warsaw/,
     );
@@ -457,4 +461,44 @@ describe('durable worker/judge parsing', () => {
     ).rejects.toThrow();
     expect(await db.db.collection('variants').countDocuments()).toBe(1);
   });
+  it.each([0, 4])(
+    'publication conflicts keep the existing schema attempt budget (%s previous attempts)',
+    async (previousAttempts) => {
+      const job = await seed({ schemaIterations: previousAttempts });
+      const concurrent = {
+        ...BASE_RESUME_SCHEMA,
+        properties: {
+          ...BASE_RESUME_SCHEMA.properties,
+          education: { type: 'string' as const },
+        },
+      };
+      generate
+        .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+        .mockImplementationOnce(async () => {
+          await app.get(SchemaRepository).publish(concurrent, 0);
+          return judge('schema');
+        });
+      await parsing.runNext();
+      expect(await getJob(job)).toMatchObject({
+        schemaIterations: previousAttempts + 1,
+        status: previousAttempts === 4 ? 'review_required' : 'queued',
+        failureCode: 'SCHEMA_CHANGED_REBASE_REQUIRED',
+      });
+      if (previousAttempts === 0) {
+        generate
+          .mockResolvedValueOnce(concurrent)
+          .mockResolvedValueOnce(judge('schema'));
+        await parsing.runNext();
+        expect(await getJob(job)).toMatchObject({
+          schemaIterations: 2,
+          stage: 'mapping',
+          schemaVersion: 1,
+        });
+        expect(generate.mock.calls.at(-2)?.[2]).toMatchObject({
+          latestSchema: concurrent,
+        });
+      } else expect(await parsing.runNext()).toBe(false);
+      expect(await db.db.collection('schemaVersions').countDocuments()).toBe(1);
+    },
+  );
 });

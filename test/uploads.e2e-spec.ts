@@ -79,9 +79,20 @@ describe('resume uploads', () => {
       .collection('resumePii')
       .findOne({ resumeId: result.resumeId });
     expect(savedPii?.name).toBe(pii.name);
+    expect(savedPii?.expiresAt).toBeInstanceOf(Date);
     await db
       .collection<{ _id: string }>('parseJobs')
       .updateOne({ _id: result.jobId }, { $set: { expiresAt: new Date(0) } });
     await agent.get(`/api/parsing-jobs/${result.jobId}`).expect(404);
+    await agent
+      .post(`/api/parsing-jobs/${result.jobId}/cancel`)
+      .set('X-CSRF-Token', csrfToken)
+      .send({})
+      .expect(201);
+    expect(
+      await db
+        .collection('resumePii')
+        .countDocuments({ resumeId: result.resumeId }),
+    ).toBe(0);
   });
 });

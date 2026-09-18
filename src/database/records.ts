@@ -12,6 +12,7 @@ export interface ResumeRecord {
   updatedAt: Date;
 }
 export interface PiiRecord {
+  expiresAt?: Date;
   _id: string;
   ownerId: string;
   resumeId: string;

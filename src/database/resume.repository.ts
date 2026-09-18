@@ -77,6 +77,13 @@ export class ResumeRepository {
         if (deleted.deletedCount !== 1)
           throw new ConflictException('Parsing job changed or expired');
         await this.database.db
+          .collection<PiiRecord>('resumePii')
+          .updateOne(
+            { ownerId: record.ownerId, resumeId: record._id },
+            { $unset: { expiresAt: '' } },
+            { session },
+          );
+        await this.database.db
           .collection<ResumeRecord>('resumes')
           .insertOne(record, { session });
       });
