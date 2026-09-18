@@ -35,6 +35,17 @@ it('rejects unsupported schemas and identifying fields', () => {
       },
     }),
   ).toThrow();
+  for (const key of ['Name', 'EMAIL', 'full_name', 'phoneNumber']) {
+    expect(() =>
+      parseResumeSchema({
+        ...BASE_RESUME_SCHEMA,
+        properties: {
+          ...BASE_RESUME_SCHEMA.properties,
+          [key]: { type: 'string' },
+        },
+      }),
+    ).toThrow();
+  }
   expect(() =>
     parseResumeSchema({ ...BASE_RESUME_SCHEMA, required: [] }),
   ).toThrow();

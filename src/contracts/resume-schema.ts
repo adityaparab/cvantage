@@ -93,16 +93,20 @@ export function parseResumeSchema(input: unknown): ResumeSchema {
       for (const [key, child] of Object.entries(node.properties)) {
         if (
           [
-            '__proto__',
+            'proto',
             'constructor',
             'prototype',
             'email',
             'phone',
-            'contactNumber',
+            'contactnumber',
+            'phonenumber',
+            'emailaddress',
+            'firstname',
+            'lastname',
             'location',
-            'fullName',
+            'fullname',
             'name',
-          ].includes(key)
+          ].includes(key.replace(/_/g, '').toLowerCase())
         )
           throw new Error('Unsupported or identifying property');
         check(child, depth + 1);
