@@ -4,16 +4,17 @@ Prepare a resume, review the extracted details, tailor it to a job description, 
 
 ## Run locally
 
-Requires Node.js 24+, Yarn 1, a MongoDB replica set, Poppler (`pdftotext`), util-linux (`prlimit`) and a PDF font such as DejaVu Sans.
+Requires Node.js 24+, Yarn 1, Docker with Compose 2.30+ for local MongoDB, Poppler (`pdftotext`), util-linux (`prlimit`) and a PDF font such as DejaVu Sans.
 
 ```sh
 yarn install:all
 cp .env.example .env
-# Configure MongoDB, session secret, LiteLLM key and worker/judge model identifiers.
+# Configure session secret, LiteLLM key and worker/judge model identifiers.
+yarn db:up
 yarn dev
 ```
 
-Open `http://localhost:5173`. See [development setup](docs/development.md) for MongoDB initialization, configuration, parser dependencies and recovery behavior. To run the compiled application:
+Open `http://localhost:5173`. [Local deployment](deploy/local/README.md) provisions an isolated MongoDB replica set on port 27018 with persistent Docker volumes. `yarn db:down` stops it and preserves its data. Existing `.env` files must use the URI documented there. See [development setup](docs/development.md) for configuration, parser dependencies and recovery behavior, and [deployment boundaries](deploy/README.md) for the separate future Railway setup. To run the compiled application:
 
 ```sh
 yarn build

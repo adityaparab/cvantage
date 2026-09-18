@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** implementation and offline verification are complete. Startup diagnostics are repaired and verified. Local startup still needs a replica set: the configured MongoDB is standalone. Live provider evaluation remains pending.
-**Next action:** resolve the pending database setup choice (separate development instance or restart/reconfigure the existing server). Then run `yarn test:models` plus the live scenarios in `docs/verification.md`.
+**Current state:** implementation, offline verification, and local MongoDB deployment are complete. Docker Compose provides a healthy replica set on port 27018, and the application starts with the current `.env`. Railway deployment is deferred; live provider evaluation remains pending.
+**Next action:** run `yarn test:models` plus the live scenarios in `docs/verification.md`. Add Railway configuration separately when cloud deployment is requested.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -22,6 +22,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 6. Job-specific tailoring | Complete (offline) | 5 | Full build, both linters, 15 unit, 21 integration and 4 client tests |
 | 7. On-demand PDF and DOCX export | Complete | 3, 5; 6 for tailored variants | Build/lint, 18 unit, 21 integration, 4 client tests; PDF and LibreOffice DOCX visual checks |
 | 8. End-to-end readiness and documentation | Offline checks complete; live evaluation pending | 1–7 | Build/lint; 18 unit, 23 integration, 4 client tests; full Chromium journey and desktop/mobile visual checks |
+| 9. Separate local MongoDB deployment | Complete | 1, startup diagnostics | Compose validation; fresh/repeated startup; 26 integration tests; transaction persistence across recreation; actual app API/UI HTTP 200 |
 
 ### How to maintain progress
 
@@ -221,6 +222,15 @@ Dependencies: milestones 1–7.
 
 Completion: all applicable acceptance criteria in `PROJECT.md` have passing evidence, the full flow works from a clean documented setup, and unresolved release blockers are recorded.
 
+### 9. Separate local MongoDB deployment
+
+- [x] Add `deploy/local/compose.yaml` with pinned MongoDB, automatic replica-set initialization, primary readiness, loopback port mapping, and named volumes.
+- [x] Keep Compose settings separate from application credentials; document a separate future Railway deployment boundary.
+- [x] Add `yarn db:up`, `yarn db:down`, and `yarn db:logs`; update `.env.example` and setup documentation.
+- [x] Verify fresh startup, repeated startup, container recreation, transactions, and application startup using the current `.env`.
+
+Completion: MongoDB remains healthy on the local Docker kernel, transactions pass, and container recreation preserves data. The existing standalone MongoDB is untouched; no data migration is performed.
+
 ## Verification commands
 
 Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
@@ -270,6 +280,7 @@ yarn test:models
 | Exports merged | [PR #7](https://github.com/adityaparab/cvantage/pull/7), `feat/resume-export` → `main` | Merge confirmed | Browser readiness and documentation |
 | Readiness verification | Real Chromium journey through the actual LiteLLM adapter; keyboard/in-progress navigation; accessible labels; draft PII cleanup and protected-response caching; setup and verification docs | Full build/lint, 18 unit, 23 integration, 4 client tests. Browser passes with 14 redacted model calls, both downloads and clean privacy checks; screenshots inspected | Live proxy evaluation pending `.env` credentials/model identifiers; see `docs/verification.md`. [Readiness PR #8](https://github.com/adityaparab/cvantage/pull/8) records the final integration changes and merge status. |
 | Startup diagnostics | `src/main.ts`, configuration and database initialization now report safe actionable errors; reject standalone topology before writes; document persistent local replica-set setup | Server build/lint; 29 unit and 26 integration tests; real compiled process exits cleanly against standalone MongoDB and serves API/UI HTTP 200 against an isolated replica set | [PR #9](https://github.com/adityaparab/cvantage/pull/9), `feat/startup-diagnostics`, records the change and merge status. Local `.env` and existing MongoDB remain unchanged pending the user's database setup choice. |
+| Local MongoDB deployment | `deploy/local/`, deployment boundary docs, `db:*` scripts, and matching `.env.example`; local Docker kernel compatibility setting | Compose validates; fresh and repeated starts healthy; 26 integration tests pass against MongoDB 8.0.32; committed marker survives container recreation; actual app API/UI HTTP 200 | Branch `feat/local-mongodb-compose`. User selected separate Compose infrastructure; current `.env` already matches it and was preserved. Existing MongoDB on 27017 remains untouched. Railway is deferred. |
 
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
