@@ -1,0 +1,248 @@
+# CVantage Implementation Plan and Progress Tracker
+
+## Scope and execution
+
+Implement the upload → parse → user review → tailor → download flow defined in [PROJECT.md](PROJECT.md). Automated job discovery and application submission are out of scope.
+
+`PROJECT.md` is the product source of truth; this plan proposes implementation choices. Start with [AGENT.md](AGENT.md), follow [CLAUDE.md](CLAUDE.md), and load the relevant installed skills listed below. Implement one coherent milestone at a time. Use this file as the ongoing progress tracker, not just an initial proposal.
+
+## Status and next action
+
+**Current state:** planning and skill setup complete; application implementation not started.
+**Next action:** begin milestone 1 with dependency/runtime inspection and validated configuration. No unresolved product decision blocks this initial work.
+
+| Milestone | Status | Depends on | Completion evidence |
+| --- | --- | --- | --- |
+| 0. Specification, agent instructions, and skills | Complete | — | `PROJECT.md`, `AGENT.md`, installed skills and source manifest; skill metadata, links, and upstream copies validated |
+| 1. Configuration, persistence, and contracts | Not started | 0 | — |
+| 2. Authentication and application shell | Not started | 1 | — |
+| 3. Upload, extraction, and PII separation | Not started | 1–2 | — |
+| 4. Global schema registry and bounded parsing graph | Not started | 1–3; retention decision before durable source storage | — |
+| 5. User review and schema-driven editing | Not started | 4 | — |
+| 6. Job-specific tailoring | Not started | 5 | — |
+| 7. On-demand PDF and DOCX export | Not started | 3, 5; 6 for tailored variants | — |
+| 8. End-to-end readiness and documentation | Not started | 1–7 | — |
+
+### How to maintain progress
+
+- Before work, mark the active milestone `In progress`. Use `Blocked` only for a concrete dependency preventing its remaining work; record that dependency and continue unaffected tasks.
+- Check off a task only after its deliverable exists and relevant checks pass. Leave partial tasks unchecked and record what remains in the progress log.
+- After each implementation session, update the status table, task checkboxes, next action, and progress log together. Record changed paths, actual verification results, and any blocker or decision.
+- Mark a milestone `Complete` only when its completion criteria pass. Skill installation, a scaffold, or mocked success alone does not complete an application feature.
+- Keep stable milestone numbers for references. If scope changes, revise pending work and explain the decision without discarding completed evidence.
+
+## Skills to use during implementation
+
+Use project-specific skills for CVantage invariants and upstream skills for library mechanics. Links to every skill are in [AGENT.md](AGENT.md); pinned upstream sources are recorded in [SOURCES.md](.claude/skills/SOURCES.md). Read only the relevant skills and their TypeScript references, not the entire catalog for every task.
+
+| Milestone | Applicable skills |
+| --- | --- |
+| 1 | `nestjs`, `resume-persistence`, `mongodb-connection`, `mongodb-schema-design`, `langchain-dependencies` |
+| 2 | `nestjs`, `react`, `resume-persistence` |
+| 3 | `nestjs`, `react`, `resume-documents`, `resume-persistence` |
+| 4 | `nestjs`, `resume-ai-workflow`, `resume-persistence`, `langchain-fundamentals`, `langgraph-fundamentals`, `langgraph-persistence` |
+| 5 | `nestjs`, `react`, `resume-persistence`, `resume-ai-workflow`, `langgraph-human-in-the-loop` |
+| 6 | `nestjs`, `react`, `resume-ai-workflow`, `langchain-fundamentals` |
+| 7 | `nestjs`, `react`, `resume-documents` |
+| 8 | Skills for the behavior under test; `mongodb-query-optimizer` when addressing measured query/index performance |
+
+Load `langchain-middleware` when implementing model/tool hooks, and `langchain-dependencies` when changing AI packages. Generic examples must not replace LiteLLM, MongoDB, source-version preservation, privacy requirements, or the bounded worker–judge workflow. Installing these skills has not installed application packages or connected external services.
+
+## Current baseline
+
+- Backend: NestJS with `/api/hello`, `/api/health`, and production serving of the compiled React app. No authentication, MongoDB integration, document processing, or AI workflow is implemented.
+- Frontend: React, TypeScript, Vite, and React Router with starter screens. Development requests to `/api` proxy to NestJS.
+- Verification: backend Jest unit tests, Supertest API tests, server ESLint, client Oxlint, and builds for both applications. No client test runner is configured.
+- Preserve the `/api` prefix, SPA routing, and health endpoint while replacing starter UI incrementally.
+
+## Proposed architecture
+
+Keep one NestJS application and the existing React client. Use thin controllers, application services for orchestration, and independently testable validators and transformation functions. Avoid adding another service or queue infrastructure until the workflow requires it.
+
+| Backend area | Responsibility |
+| --- | --- |
+| `config`, `database` | Validated server configuration, MongoDB connection, indexes |
+| `auth` | Registration, login, logout, session lookup, ownership enforcement |
+| `resumes` | Structured resume records, revisions, separate PII, review decisions |
+| `documents` | Content validation, text extraction, local PII detection/redaction, temporary-file cleanup |
+| `resume-schemas` | Global immutable schema versions, validation, atomic publication |
+| `ai` | LiteLLM adapter, LangChain model calls, prompt contracts, response validation |
+| `parsing` | LangGraph workflow, job state, iteration limits, checkpoints, review pauses |
+| `tailoring`, `exports` | Factual tailoring, separate variants, PDF/DOCX rendering |
+
+Use an authenticated job-status endpoint with polling for long-running work. Store workflow state in MongoDB, with a single active lease per job and bounded concurrency. Uploaded file bytes never enter job records or graph checkpoints. Start durable AI processing only after extraction, redaction, and original-file cleanup succeed.
+
+### Persistence boundaries
+
+| Record | Essential fields and invariants |
+| --- | --- |
+| User/session | Normalized unique email, password hash; expiring and revocable sessions |
+| Resume | Owner ID, structured data, extraction schema version, revision, acceptance source; no PII |
+| Resume PII | Owner ID, resume ID, name, contact number, email, location; restricted queries and responses |
+| Schema version | Unique version, approved definition, definition hash, publication metadata; immutable and free of user values |
+| Schema registry | Current approved version and revision for atomic publication |
+| Parse job/review draft | Owner ID, stage, separate iteration counters, schema reference, redacted candidates, judge results, status, lease, timestamps |
+| Tailored variant | Owner ID, source resume ID and revision, schema version, tailored data, review status; never overwrites the source |
+
+Use optimistic revision checks for user edits and atomic writes for approvals. Ensure the schema registry can advance only to a persisted approved version. Choose the MongoDB transaction/atomic-update strategy in milestone 1 and document its deployment requirements.
+
+### API surface
+
+Define DTOs and error contracts before wiring screens. Proposed routes under `/api`:
+
+- `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`.
+- `POST /resumes/upload`; return a resume/job reference after local extraction and cleanup.
+- `GET /parsing-jobs/:id` and `POST /parsing-jobs/:id/cancel`.
+- `GET /resumes`, `GET /resumes/:id`, `PATCH /resumes/:id`.
+- `GET /resumes/:id/pii`, `PATCH /resumes/:id/pii`.
+- `GET /resumes/:id/review`, `POST /resumes/:id/review` for stage-specific corrections and approval.
+- `GET /resume-schemas/:version` for the definition needed by the editor.
+- `POST /resumes/:id/tailor`, `GET /resumes/:id/variants/:variantId`, `PATCH /resumes/:id/variants/:variantId`.
+- `POST /resumes/:id/export` with selected variant, if any, and `pdf` or `docx` format.
+
+Every resume, PII, job, review, and variant operation enforces ownership on the server. Return actionable validation errors without source text, credentials, or PII. Use consistent processing, review-required, failure, and conflict states.
+
+## Milestones
+
+### 0. Specification, agent instructions, and skills
+
+- [x] Define the product workflow, judge contract, formats, privacy boundaries, and schema versioning in `PROJECT.md`.
+- [x] Create GPT-6 repository guidance in `AGENT.md`, based on `CLAUDE.md`.
+- [x] Preserve the existing NestJS and React skills and add project-specific persistence, AI workflow, and document-processing skills.
+- [x] Install six official LangChain/LangGraph skills and three official MongoDB skills, retaining their supporting references and recording source revisions.
+- [x] Establish the implementation milestones and progress tracking in this file.
+
+Completion: instructions and skill routing exist; new skill metadata and local entry-point links are valid; installed dependency skills match their pinned upstream sources. This milestone provides development context, not implemented product features.
+
+### 1. Configuration, persistence, and contracts
+
+Dependencies: milestone 0.
+
+- [ ] Inspect Node/Yarn versions, manifests, lockfiles, and current scripts. Select compatible TypeScript dependencies for configuration, validation, MongoDB, LangChain, and LangGraph; add packages only when their integration is implemented. Record chosen versions and required runtime changes without rewriting unrelated dependencies.
+- [ ] Add validated configuration for MongoDB, sessions, the LiteLLM base URL, credentials, `LITELLM_WORKER_MODEL`, and `LITELLM_JUDGE_MODEL`. Provide a placeholder-only `.env.example`.
+- [ ] Integrate MongoDB and define repositories, indexes, revisions, and atomic publication/approval operations.
+- [ ] Define upload, job-state, review, schema, and judge DTOs. Centralize runtime validation and the exact judge acceptance predicate from `PROJECT.md`.
+- [ ] Choose a supported JSON Schema dialect and a documented subset that both the validator and dynamic editor support. Require the four base sections while allowing source-driven additions; preserve existing fields when extending a schema.
+- [ ] Add injectable adapters for document extraction, LLM calls, and rendering so tests can avoid network services.
+- [ ] Document and verify local MongoDB/test database setup, including replica-set configuration if required by the selected publication strategy.
+
+Completion: startup validates required configuration without exposing secrets; repository integration tests verify ownership fields, unique indexes, revision conflicts, and atomic schema publication. Document any replica-set requirement for transactions.
+
+### 2. Authentication and application shell
+
+Dependencies: milestone 1.
+
+- [ ] Implement email/password registration, password hashing, login, logout, and current-user lookup. Use server-managed sessions with HttpOnly cookies, appropriate Secure/SameSite settings, and CSRF protection for mutations.
+- [ ] Add request validation, login throttling, and owner-scoped access helpers.
+- [ ] Replace starter screens with registration/login, a protected resume list, navigation, and shared loading/error states.
+- [ ] Add a small client test setup for critical interactions as real features arrive.
+
+Completion: a user can register, sign in, refresh the page, and sign out. Tests prove unauthenticated and cross-user requests cannot access protected data, including PII and job status.
+
+### 3. Upload, extraction, and PII separation
+
+Dependencies: milestones 1–2.
+
+- [ ] Evaluate parser adapters against representative PDF, DOCX, and legacy DOC fixtures; include any required system executable in setup documentation. Do not assume DOC is interchangeable with DOCX.
+- [ ] Enforce the 20,000,000-byte limit before buffering oversized uploads; verify document signatures/content and reject malformed, encrypted/unsupported, or unreadable documents clearly.
+- [ ] Bound extraction time, memory, decompression, and parser concurrency. Prefer memory; isolate and clean up parser-required temporary files on success, failure, cancellation, and abandoned-job recovery.
+- [ ] Extract name, phone, email, and location locally, store them separately, and redact their occurrences before any LLM request. Apply the same checks to later edits and job descriptions before model use.
+- [ ] Add a pre-LLM correction screen for uncertain PII detection; do not send unredacted text to a model to identify PII. Use synthetic fixtures to exercise names, locations, repeated values, headers, and footers.
+- [ ] Show upload validation, extraction progress, and actionable errors in React. Reject image-only documents without readable text until OCR is explicitly included.
+
+Completion: each allowed format extracts correctly; boundary-size and misleading-extension cases are tested; no original file survives processing. Captured model-input fixtures contain none of the known test PII.
+
+### 4. Global schema registry and bounded parsing graph
+
+Dependencies: milestones 1–3. Resolve the retention decision below before durable source/checkpoint storage is enabled.
+
+- [ ] Integrate LangChain through the configurable LiteLLM adapter. Verify configured model capabilities with a synthetic smoke test; validate outputs locally even when provider structured outputs are available.
+- [ ] Implement LangGraph stages: schema worker → schema judge → publish/reuse schema → mapping worker → mapping judge → save accepted resume, with explicit revision and review branches.
+- [ ] Give each stage its own maximum of five worker–judge iterations, including the first attempt. Stop on acceptance; malformed judge responses consume an iteration. Bound transport retries and timeouts separately.
+- [ ] Implement the exact acceptance gate: valid response, matching stage, `accept`, four true checks, confidence at least 0.90, empty issues, and successful application schema/PII validation.
+- [ ] Supply source text as data, separate from instructions. Validate and sanitize worker output and judge feedback before persistence or reuse. Grant parsing models no unrelated tools.
+- [ ] Publish only approved global schemas. Reuse unchanged definitions, atomically rebase concurrent additions within the remaining iteration budget, and route unresolved conflicts to review.
+- [ ] Pin the schema version before mapping and record it on the accepted resume. Leave existing resumes unchanged when a new global version appears.
+- [ ] Persist counters and sanitized workflow state, implement leases and cancellation, and make resume saving/publication idempotent. Recovery must not reset iteration budgets; ambiguous interrupted calls must not permit unbounded retries.
+
+Completion: deterministic fake-model tests cover early acceptance, fifth-iteration acceptance, exhaustion in either stage, invalid/contradictory judge output, transport failures, concurrent publication, restart recovery, and duplicate completion. No unapproved candidate becomes an accepted resume or global schema.
+
+### 5. User review and schema-driven editing
+
+Dependencies: milestone 4.
+
+- [ ] Render nested objects, arrays, categorized skills, optional fields, and discovered sections using the record's schema version. Display PII in a separate form.
+- [ ] Show unresolved issues, confidence, and stage-specific corrections. Translate schema review into editable field definitions rather than requiring users to write raw JSON.
+- [ ] Implement review approval that rechecks structure and PII, records the user's decision separately, and resumes only the appropriate next stage. Review does not reset exhausted model loops.
+- [ ] Guard global schema publication from destructive user edits or user-specific values; user review cannot bypass required sections, compatibility, or privacy checks.
+- [ ] Preserve user corrections with revision checks. Reject stale writes instead of overwriting newer edits or replacing them with regenerated values.
+
+Completion: users can resolve schema and mapping failures, edit every supported field, and separately correct PII. Tests cover invalid approval, stale writes, old-schema editing, and preservation of corrections.
+
+### 6. Job-specific tailoring
+
+Dependencies: milestone 5.
+
+- [ ] Accept a job description and use a snapshot of the latest user-corrected resume, with its recorded schema version, as authoritative input.
+- [ ] Redact inputs and instruct the model to change wording/emphasis without introducing unsupported facts. Treat job-description instructions as untrusted content.
+- [ ] Validate structure and PII and compare proposed facts against the source; surface uncertainty for user review rather than treating a model confidence score as proof.
+- [ ] Save a separate variant linked to the source revision. Present changes for review and editing; clearly identify variants based on an older source revision.
+- [ ] Bound tailoring calls and failures independently. Do not silently extend the two parsing-loop budgets to this separate workflow.
+
+Completion: tailoring leaves the source and corrections untouched, preserves factual fields in representative fixtures, rejects invalid outputs, and allows the user to review the selected variant.
+
+### 7. On-demand PDF and DOCX export
+
+Dependencies: milestones 3 and 5; include milestone 6 for tailored variants.
+
+- [ ] Build a shared presentation model from the selected structured resume and its associated PII, combined only on the server.
+- [ ] Implement PDF and DOCX renderers, covering all supported schema fields and additional sections without silently dropping data.
+- [ ] Stream the chosen format with correct content type and filename; clean up temporary output on success, error, or client disconnect. Never persist generated files.
+- [ ] Add preview/download controls and clear errors for unsupported formats or invalid record state.
+
+Completion: exported files open in standard viewers, contain expected text and PII, handle Unicode and multi-page content, and reflect the selected source/variant. Verify DOCX structure, PDF text extraction, visual layout, and cleanup failure paths.
+
+### 8. End-to-end readiness and documentation
+
+Dependencies: milestones 1–7.
+
+- [ ] Exercise registration → upload → parsing → correction/review → tailoring → PDF/DOCX download through the UI with deterministic model responses.
+- [ ] Run representative synthetic resumes through the configured proxy to evaluate extraction, PII handling, judge decisions, and factual tailoring. Record observed quality and failures; do not silently change the confidence threshold.
+- [ ] Check keyboard interaction, field labels, actionable errors, empty states, responsive forms, and in-progress navigation.
+- [ ] Verify logs and graph traces exclude secrets, raw uploads, PII, and unredacted prompts. Track only safe identifiers, stage timing, iteration counts, and failure codes.
+- [ ] Document environment setup, MongoDB requirements, parser/rendering dependencies, supported formats, failure recovery, and the implemented retention policy.
+- [ ] Run the relevant build, lint, unit, API integration, and client checks. Report any skipped live-provider or viewer verification explicitly.
+
+Completion: all applicable acceptance criteria in `PROJECT.md` have passing evidence, the full flow works from a clean documented setup, and unresolved release blockers are recorded.
+
+## Verification commands
+
+Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
+
+```sh
+yarn build
+yarn lint
+yarn --cwd client lint
+yarn test --runInBand
+yarn test:e2e --runInBand
+```
+
+`yarn lint` currently applies fixes; inspect its diff. Run focused checks during milestones and the complete relevant suite at integration. Keep deterministic workflow tests offline; isolate live-proxy evaluation from the default suite. Use a disposable test database and synthetic resumes only.
+
+## Decisions and implementation gates
+
+- **OCR:** unresolved. The initial path rejects documents with no extractable text and explains why. Add OCR only after a product decision.
+- **Text/draft retention:** unresolved. Before milestone 4 persists redacted source text, checkpoints, or review drafts, agree on retention duration, cleanup triggers, and what happens to expired pending reviews. Continue with interfaces and synthetic/in-memory workflow tests meanwhile; do not interpret an unset duration as permission to retain data indefinitely.
+- **PII detection:** demonstrate acceptable local extraction/redaction on representative fixtures in milestone 3. If uncertainty cannot be resolved locally, require user correction before the first model call.
+- **Runtime compatibility:** establish DOC parsing and PDF rendering availability during their milestones, and verify the configured proxy models' capabilities without changing their identifiers or exposing credentials.
+
+## Progress log
+
+| Entry | Work completed | Verification/evidence | Remaining work / next action |
+| --- | --- | --- | --- |
+| Planning baseline | Inspected starter backend/client and created `PROJECT.md` and the initial implementation plan | Reviewed source files, manifests, and existing test scripts; no application tests run for document creation | Application milestones remain unstarted |
+| Agent setup | Added `AGENT.md` and three project-specific skills; preserved NestJS/React skills | New local skills passed the skill validator; instruction links and formatting checked | Add upstream dependency guidance |
+| Dependency skills | Installed nine upstream LangChain/LangGraph/MongoDB skills and added routing/source records | Checked metadata, entry-point links, and byte-for-byte equality with pinned sources | Application dependencies still need implementation-time selection |
+| Tracker update | Added milestone status, skill mapping, setup completion, and progress-maintenance rules | Local document links and task/status consistency checked | Begin milestone 1: dependency/runtime inspection and configuration |
+
+For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
