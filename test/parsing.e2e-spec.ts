@@ -1,0 +1,246 @@
+import { Test } from '@nestjs/testing';
+import type { INestApplication } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { AppModule } from '../src/app.module';
+import { DatabaseService } from '../src/database/database.service';
+import { ModelGateway } from '../src/adapters/ports';
+import { ParsingService } from '../src/parsing/parsing.service';
+import { BASE_RESUME_SCHEMA } from '../src/contracts/resume-schema';
+import type {
+  ParseJob,
+  PiiRecord,
+  ResumeRecord,
+} from '../src/database/records';
+import type { Stage } from '../src/contracts/workflow';
+const data = {
+  basics: {},
+  professionalSummary: 'Software engineer',
+  workExperience: [],
+  skills: [{ category: 'Languages', items: ['TypeScript'] }],
+};
+const judge = (stage: Stage, accept = true) => ({
+  stage,
+  verdict: accept ? 'accept' : 'revise',
+  confidence: accept ? 0.95 : 0.8,
+  checks: {
+    structureValid: true,
+    sourceCovered: accept,
+    sourceFaithful: true,
+    piiAbsent: true,
+  },
+  issues: accept
+    ? []
+    : [
+        {
+          code: 'COVERAGE',
+          path: '',
+          message: 'Check coverage',
+          suggestedFix: 'Include all relevant fields',
+        },
+      ],
+});
+describe('durable worker/judge parsing', () => {
+  let app: INestApplication;
+  let db: DatabaseService;
+  let parsing: ParsingService;
+  const generate = jest.fn<
+    Promise<unknown>,
+    Parameters<ModelGateway['generate']>
+  >();
+  beforeAll(async () => {
+    const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(ModelGateway)
+      .useValue({ generate })
+      .compile();
+    app = module.createNestApplication();
+    await app.init();
+    db = app.get(DatabaseService);
+    parsing = app.get(ParsingService);
+  });
+  async function clear() {
+    for (const name of ['parseJobs', 'schemaVersions', 'resumes', 'resumePii'])
+      await db.db.collection(name).deleteMany({});
+    await db.db
+      .collection<{ _id: string }>('schemaRegistry')
+      .updateOne({ _id: 'global' }, { $set: { version: 0 } });
+  }
+  beforeEach(async () => {
+    await clear();
+    generate.mockReset();
+  });
+  afterAll(async () => {
+    await clear();
+    await app.close();
+  });
+  async function seed(overrides: Partial<ParseJob> = {}) {
+    const job: ParseJob = {
+      _id: randomUUID(),
+      ownerId: randomUUID(),
+      resumeId: randomUUID(),
+      source: 'Software engineer. TypeScript.',
+      stage: 'schema',
+      status: 'queued',
+      piiConfirmed: true,
+      schemaIterations: 0,
+      mappingIterations: 0,
+      revision: 0,
+      expiresAt: new Date(Date.now() + 86400000),
+      createdAt: new Date(),
+      ...overrides,
+    };
+    await db.db.collection<ParseJob>('parseJobs').insertOne(job);
+    await db.db.collection<PiiRecord>('resumePii').insertOne({
+      _id: randomUUID(),
+      ownerId: job.ownerId,
+      resumeId: job.resumeId,
+      revision: 0,
+      name: 'Synthetic Applicant',
+      email: 'applicant@example.test',
+      contactNumber: '+1 555 123 4567',
+      location: 'Warsaw, Poland',
+    });
+    return job;
+  }
+  const getJob = (job: ParseJob) =>
+    db.db.collection<ParseJob>('parseJobs').findOne({ _id: job._id });
+  it('accepts early, pins schema, deletes all temporary state and does not reprocess completion', async () => {
+    const job = await seed();
+    generate
+      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce(judge('schema'))
+      .mockResolvedValueOnce(data)
+      .mockResolvedValueOnce(judge('mapping'));
+    expect(await parsing.runNext()).toBe(true);
+    expect((await getJob(job))?.schemaIterations).toBe(1);
+    await parsing.runNext();
+    expect(await getJob(job)).toBeNull();
+    expect(await parsing.runNext()).toBe(false);
+    const record = await db.db
+      .collection<ResumeRecord>('resumes')
+      .findOne({ _id: job.resumeId });
+    expect(record).toMatchObject({
+      data,
+      schemaVersion: 1,
+      acceptanceSource: 'judge',
+    });
+    expect(generate).toHaveBeenCalledTimes(4);
+    expect(JSON.stringify(generate.mock.calls)).not.toMatch(
+      /Synthetic Applicant|applicant@example|555 123|Warsaw/,
+    );
+  });
+  it.each(['schema', 'mapping'] as const)(
+    'stops after exactly five failed %s iterations',
+    async (stage) => {
+      const job = await seed();
+      if (stage === 'mapping') {
+        generate
+          .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+          .mockResolvedValueOnce(judge('schema'));
+        await parsing.runNext();
+      }
+      for (let i = 0; i < 5; i++) {
+        generate
+          .mockResolvedValueOnce(stage === 'schema' ? BASE_RESUME_SCHEMA : data)
+          .mockResolvedValueOnce(judge(stage, false));
+        await parsing.runNext();
+      }
+      expect(await getJob(job)).toMatchObject({
+        status: 'review_required',
+        [`${stage}Iterations`]: 5,
+      });
+      const calls = generate.mock.calls.length;
+      expect(await parsing.runNext()).toBe(false);
+      expect(generate).toHaveBeenCalledTimes(calls);
+      expect(await db.db.collection('resumes').countDocuments()).toBe(0);
+    },
+  );
+  it('accepts on fifth iteration without granting a new budget', async () => {
+    const job = await seed({ schemaIterations: 4 });
+    generate
+      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce(judge('schema'));
+    await parsing.runNext();
+    expect(await getJob(job)).toMatchObject({
+      schemaIterations: 5,
+      stage: 'mapping',
+      mappingIterations: 0,
+    });
+  });
+  it('consumes malformed/contradictory judge iterations and removes PII outputs', async () => {
+    const job = await seed();
+    generate
+      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce({ ...judge('schema'), confidence: 0.5 });
+    await parsing.runNext();
+    generate
+      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce({ verdict: 'accept' });
+    await parsing.runNext();
+    generate.mockResolvedValueOnce({
+      ...BASE_RESUME_SCHEMA,
+      title: 'Synthetic Applicant',
+    });
+    await parsing.runNext();
+    expect(await getJob(job)).toMatchObject({
+      schemaIterations: 3,
+      status: 'queued',
+    });
+    expect(JSON.stringify(await getJob(job))).not.toContain(
+      'Synthetic Applicant',
+    );
+    expect(await db.db.collection('schemaVersions').countDocuments()).toBe(0);
+  });
+  it('surfaces transport failure without automatic retries', async () => {
+    const job = await seed();
+    generate.mockRejectedValueOnce(new Error('private provider response'));
+    await parsing.runNext();
+    expect(await getJob(job)).toMatchObject({
+      status: 'failed',
+      schemaIterations: 1,
+      failureCode: 'MODEL_OR_PROCESSING_FAILED',
+    });
+    expect(await parsing.runNext()).toBe(false);
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(await getJob(job))).not.toContain('private provider');
+  });
+  it('recovers an interrupted final attempt without another model call', async () => {
+    const job = await seed({
+      schemaIterations: 5,
+      status: 'schema',
+      leaseUntil: new Date(0),
+      leaseToken: 'abandoned',
+    });
+    await parsing.runNext();
+    expect(await getJob(job)).toMatchObject({
+      status: 'review_required',
+      schemaIterations: 5,
+    });
+    expect(generate).not.toHaveBeenCalled();
+  });
+  it('one lease prevents concurrent workers and cancellation prevents saving', async () => {
+    const job = await seed();
+    let release!: (value: unknown) => void;
+    let ready!: () => void;
+    const started = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    generate
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            release = resolve;
+            ready();
+          }),
+      )
+      .mockResolvedValueOnce(judge('schema'));
+    const work = parsing.runNext();
+    await Promise.race([work, started]);
+    expect(release).toBeDefined();
+    expect(await parsing.runNext()).toBe(false);
+    await db.db.collection<ParseJob>('parseJobs').deleteOne({ _id: job._id });
+    release(BASE_RESUME_SCHEMA);
+    await work;
+    expect(await getJob(job)).toBeNull();
+    expect(await db.db.collection('resumes').countDocuments()).toBe(0);
+  });
+});

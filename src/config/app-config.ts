@@ -46,6 +46,11 @@ export function validateEnvironment(input: unknown): Environment {
 export class AppConfig {
   readonly values: Environment;
   constructor(config: ConfigService) {
+    // Resume content must not be exported to ambient tracing integrations.
+    delete process.env.LANGCHAIN_TRACING;
+    process.env.LANGCHAIN_TRACING_V2 = 'false';
+    process.env.LANGSMITH_TRACING = 'false';
+    process.env.LANGCHAIN_VERBOSE = 'false';
     this.values = validateEnvironment(
       Object.fromEntries(
         Object.keys(environmentSchema.shape).map((key) => [

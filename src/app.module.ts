@@ -1,3 +1,6 @@
+import { ParsingService } from './parsing/parsing.service';
+import { ModelGateway } from './adapters/ports';
+import { LiteLlmGateway } from './ai/model.gateway';
 import { UploadsController } from './documents/uploads.controller';
 import { LocalDocumentExtractor } from './documents/document-extractor';
 import { AuthModule } from './auth/auth.module';
@@ -25,6 +28,11 @@ import { AppService } from './app.service';
     }),
   ],
   controllers: [AppController, ResumesController, UploadsController],
-  providers: [AppService, LocalDocumentExtractor],
+  providers: [
+    AppService,
+    LocalDocumentExtractor,
+    ParsingService,
+    { provide: ModelGateway, useClass: LiteLlmGateway },
+  ],
 })
 export class AppModule {}
