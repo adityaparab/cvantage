@@ -9,7 +9,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 ## Status and next action
 
 **Current state:** updated resume review, appearance and workflow activity are implemented and verified. Schemas stay internal; parsed resumes require user approval. Local infrastructure remains separate from future Railway deployment.
-**Next action:** merge the completed activity milestone. Live provider quality evaluation and Railway deployment remain separate pending work.
+**Next action:** live provider quality evaluation and Railway deployment remain separate pending work; all requested UI/activity milestones are complete.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -310,6 +310,6 @@ yarn test:models
 | Internal schema processing and resume approval | Removed schema editor/manual publication path; hid schema proposals and judge output; always pause mapped results for user approval/rejection | Build, both linters, 29 unit, 26 integration and 5 client tests; Chromium upload-to-download journey passes | [PR #11](https://github.com/adityaparab/cvantage/pull/11), `feat/background-schema-review`; next: appearance selection |
 | Appearance selection | Light, Dark, and System (default); saved preference, live OS changes, pre-paint initialization and shared color tokens | Build/client lint; 7 client tests; Chromium workflow plus appearance/reload checks; both palettes inspected | [PR #12](https://github.com/adityaparab/cvantage/pull/12) merged; streamed workflow activity next |
 
-| Streamed workflow activity | `src/activity`, streaming LiteLLM adapter, protected progress persistence, activity routes, upload/tailoring redirects and notification dropdown | Full build/both linters; 35 unit, 30 integration, 9 client tests; full Chromium journey with 15 redacted requests, retry/loop/reload checks and inspected mobile/dark dropdown | Merge `feat/workflow-activity`; live provider evaluation and Railway remain separate |
+| Streamed workflow activity | `src/activity`, streaming LiteLLM adapter, protected progress persistence, activity routes, upload/tailoring redirects and notification dropdown | Full build/both linters; 35 unit, 30 integration, 9 client tests; full Chromium journey with 15 redacted requests, retry/loop/reload checks and inspected mobile/dark dropdown | [PR #13](https://github.com/adityaparab/cvantage/pull/13), `feat/workflow-activity`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
