@@ -40,7 +40,7 @@ The dependency skills are upstream references; use their TypeScript examples for
 
 - Carry the requested task through implementation and necessary verification; do not stop at a proposal when the user requested action. Do not implement the entire plan merely because it is present.
 - Make routine, reversible implementation choices using existing patterns. Ask a focused question only when a missing decision materially affects correctness or scope; continue independent work while it is unresolved.
-- Keep new requirements distinct from implementation choices. OCR and text/review-draft retention remain open in `PROJECT.md`; do not guess that OCR is supported or retention is unlimited.
+- Keep new requirements distinct from implementation choices. OCR remains open in `PROJECT.md`. Temporary parsing data is deleted on acceptance; unfinished reviews expire after 30 days.
 - Keep changes coherent and avoid unrelated refactors. Do not replace configuration, switch models, weaken validation, or alter product rules just to make a test pass.
 - Update plan checkboxes only when implementation and completion criteria are satisfied. Record relevant decisions or blockers, not a transcript of every action.
 - A request to edit code does not itself request publishing, deploying, or sending data to unrelated external services. Respect the tool's actual permissions and available capabilities.

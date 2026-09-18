@@ -45,6 +45,10 @@ Never commit credentials or expose them to the frontend or logs. Read worker and
 - If a parser requires a temporary physical file, delete it when parsing finishes, including failure or cancellation. Do not retain it while awaiting user review.
 - Generate downloads on demand in the user's selected format: **PDF or DOCX only**. Stream the generated file to the user and clean up any temporary export file after delivery or failure.
 
+## Temporary parsing data retention
+
+Delete redacted source text, workflow checkpoints, and review drafts when parsing is accepted. Expire unfinished parsing/review data after 30 days; expired work requires a fresh upload. Preserve accepted resume records, their schema versions, and separately stored PII. Original upload files still follow immediate cleanup after extraction.
+
 ## PII and resume data
 
 - The user's name, contact number, email, and location are PII. Extract and store these in a separate, access-controlled MongoDB record linked to the user's resume; do not embed them in parsed resume data.
@@ -148,4 +152,3 @@ When implementing the relevant feature, verify these observable outcomes:
 Resolve these when they become relevant to a task, rather than treating guesses as established requirements:
 
 - Whether scanned or image-only documents require OCR. Until decided, show a clear unsupported-document error when readable text cannot be extracted.
-- Retention periods and deletion rules for extracted text and structured review drafts. The original-file deletion policy above is already settled; it does not specify retention of these database records.
