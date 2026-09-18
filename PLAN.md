@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 1–5 merged; milestone 6 verified on `feat/resume-tailoring`.
-**Next action:** merge tailoring milestone, then implement on-demand PDF/DOCX exports. Live proxy evaluation is pending .env configuration.
+**Current state:** milestones 1–6 merged; milestone 7 verified on `feat/resume-export`.
+**Next action:** merge exports, then run browser-level readiness checks and finish setup documentation. Live proxy evaluation is pending .env configuration.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 4. Global schema registry and bounded parsing graph | Complete (offline); live evaluation pending | 1–3 | Server build/lint, 14 unit and 18 integration tests; bounded graph and recovery tested |
 | 5. User review and schema-driven editing | Complete | 4 | Full build, both linters, 20 integration and 4 client tests |
 | 6. Job-specific tailoring | Complete (offline) | 5 | Full build, both linters, 15 unit, 21 integration and 4 client tests |
-| 7. On-demand PDF and DOCX export | Not started | 3, 5; 6 for tailored variants | — |
+| 7. On-demand PDF and DOCX export | Complete | 3, 5; 6 for tailored variants | Build/lint, 18 unit, 21 integration, 4 client tests; PDF and LibreOffice DOCX visual checks |
 | 8. End-to-end readiness and documentation | Not started | 1–7 | — |
 
 ### How to maintain progress
@@ -199,10 +199,10 @@ Completion: tailoring leaves the source and corrections untouched, preserves fac
 
 Dependencies: milestones 3 and 5; include milestone 6 for tailored variants.
 
-- [ ] Build a shared presentation model from the selected structured resume and its associated PII, combined only on the server.
-- [ ] Implement PDF and DOCX renderers, covering all supported schema fields and additional sections without silently dropping data.
-- [ ] Stream the chosen format with correct content type and filename; clean up temporary output on success, error, or client disconnect. Never persist generated files.
-- [ ] Add preview/download controls and clear errors for unsupported formats or invalid record state.
+- [x] Build a shared presentation model from the selected structured resume and its associated PII, combined only on the server.
+- [x] Implement PDF and DOCX renderers, covering all supported schema fields and additional sections without silently dropping data.
+- [x] Stream the chosen format with correct content type and filename; clean up temporary output on success, error, or client disconnect. Never persist generated files.
+- [x] Add preview/download controls and clear errors for unsupported formats or invalid record state.
 
 Completion: exported files open in standard viewers, contain expected text and PII, handle Unicode and multi-page content, and reflect the selected source/variant. Verify DOCX structure, PDF text extraction, visual layout, and cleanup failure paths.
 
@@ -272,3 +272,7 @@ For future entries, record: milestone/task, concrete changed paths, checks and r
 | Review merged | [PR #5](https://github.com/adityaparab/cvantage/pull/5), `feat/resume-review` → `main` | Merge confirmed | Tailoring separate variants |
 
 | Tailoring implementation | Separate revision-linked variants, source/proposal comparison, protected factual fields and mandatory user approval | Full build/lint, 15 unit, 21 integration and 4 client tests. Corrected source remains unchanged; invented skills rejected; stale variant writes and cross-user reads rejected | Merge tailoring PR, then on-demand exports. Live wording/fidelity evaluation remains pending configuration |
+
+| Tailoring merged | [PR #6](https://github.com/adityaparab/cvantage/pull/6), `feat/resume-tailoring` → `main` | Merge confirmed | PDF/DOCX exports |
+
+| Export implementation | Shared schema-based presentation; memory-only PDF/DOCX, server-side PII, source/approved-variant downloads and PDF preview | Full build/lint; 18 unit, 21 integration and 4 client tests. Unicode/multipage text verified; PDF and DOCX (LibreOffice-rendered) visually inspected. Unsupported glyphs fail clearly | Merge export PR, then browser readiness |

@@ -1,3 +1,4 @@
+import ExportControls from './ExportControls'
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { ResumeFields } from './ResumeFields'
@@ -20,7 +21,7 @@ export default function TailoringPanel({resume,schema,unsaved}:{resume:Resume;sc
     {variant&&<><h4>Review your tailored version</h4>{variant.sourceRevision!==resume.revision&&<p className="error">This version uses an older source resume. Create a new version to include your latest changes.</p>}<p>Check every change for factual accuracy. Model confidence is an assessment, not proof. Correct factual details in your source resume before tailoring again.</p>
     <div className="changes">{changes(variant.sourceData,data).map(change=><article key={change.path}><strong>{change.path}</strong><p><span className="muted">Original: </span>{change.before}</p><p><span className="muted">Proposed: </span>{change.after}</p></article>)}</div>
     {variant.judge?.issues.map((issue,i)=><p className="error" key={i}>{issue.message} — {issue.suggestedFix}</p>)}
-    <form onSubmit={event=>{event.preventDefault();void save(true)}}><ResumeFields schema={schema} value={data} onChange={setData} label="Tailored resume"/><label className="confirmation"><input type="checkbox" required/>I checked these changes against my experience and approve this version.</label><button type="button" className="secondary" disabled={busy} onClick={()=>void save(false)}>Save draft</button><button disabled={busy}>Approve tailored version</button></form>{variant.status==='reviewed'&&<p role="status">This saved version is approved.</p>}</>}
+    <form onSubmit={event=>{event.preventDefault();void save(true)}}><ResumeFields schema={schema} value={data} onChange={setData} label="Tailored resume"/><label className="confirmation"><input type="checkbox" required/>I checked these changes against my experience and approve this version.</label><button type="button" className="secondary" disabled={busy} onClick={()=>void save(false)}>Save draft</button><button disabled={busy}>Approve tailored version</button></form>{variant.status==='reviewed'&&<><p role="status">This saved version is approved.</p><ExportControls resumeId={resume._id} variantId={variant._id} disabled={JSON.stringify(data)!==JSON.stringify(variant.data)}/></>}</>}
     {error&&<p role="alert" className="error">{error}</p>}
   </section>
 }

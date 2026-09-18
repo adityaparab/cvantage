@@ -61,3 +61,9 @@ Failed/exhausted jobs pause in application-owned MongoDB state. User approval va
 ## Tailoring
 
 Tailoring uses a saved source revision and its extraction schema. It permits summary/highlight wording changes while preserving all other values, list order and highlight counts; new numeric claims are rejected. The judge checks narrative fidelity, and every proposal still requires user review with a source/proposal comparison. Model judgment is not proof of factual equivalence. Variants store the non-PII source snapshot for comparison and never overwrite the source. Older-source variants are labeled in the UI. Calls are bounded to one worker and one judge, without retries, with at most two active requests per process and one per account. The job description is redacted and requires user confirmation before use; it is not stored.
+
+## Exports
+
+PDFKit and docx render the same schema-based presentation entirely in memory. Downloads restore contact details on the server and never call a model. Variants require explicit user approval. Outputs are not persisted, so errors/disconnects leave no output files to clean up. Export concurrency is two per process and content is bounded to 300,000 serialized presentation characters.
+
+PDF requires a readable single-font TTF/OTF file. The Linux default is DejaVu Sans (`fonts-dejavu-core`); override `EXPORT_FONT_PATH` for another language. Glyph coverage is checked before rendering; unsupported glyphs produce an error with a DOCX alternative, never a silently incomplete PDF. Polish, Greek and Cyrillic text and multipage documents are tested. DOCX uses DejaVu Sans, with viewer font substitution when unavailable. Synthetic PDF and DOCX layouts were visually checked using Poppler and LibreOffice.
