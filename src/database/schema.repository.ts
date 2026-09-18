@@ -33,6 +33,7 @@ export class SchemaRepository {
   async publish(
     input: unknown,
     expectedVersion: number,
+    approval?: { jobId: string; ownerId: string; revision: number },
   ): Promise<SchemaRecord> {
     const definition = parseResumeSchema(input);
     const hash = createHash('sha256')
@@ -55,7 +56,45 @@ export class SchemaRepository {
         const previous = expectedVersion
           ? await versions.findOne({ version: expectedVersion }, { session })
           : null;
-        if (previous?.hash === hash) return previous;
+        const approveJob = async (version: number) => {
+          if (!approval) return;
+          const updated = await this.database.db
+            .collection<import('./records').ParseJob>('parseJobs')
+            .updateOne(
+              {
+                _id: approval.jobId,
+                ownerId: approval.ownerId,
+                revision: approval.revision,
+                stage: 'schema',
+                piiConfirmed: true,
+                status: { $in: ['review_required', 'failed'] },
+                expiresAt: { $gt: new Date() },
+              },
+              {
+                $set: {
+                  stage: 'mapping',
+                  status: 'queued',
+                  schemaVersion: version,
+                  schemaApprovalSource: 'user',
+                  leaseUntil: new Date(0),
+                },
+                $unset: {
+                  candidate: '',
+                  judge: '',
+                  failureCode: '',
+                  leaseToken: '',
+                },
+                $inc: { revision: 1 },
+              },
+              { session },
+            );
+          if (updated.modifiedCount !== 1)
+            throw new ConflictException('Review changed or expired');
+        };
+        if (previous?.hash === hash) {
+          await approveJob(previous.version);
+          return previous;
+        }
         if (previous && !preservesFields(previous.definition, definition))
           throw new ConflictException(
             'Existing schema fields must be preserved',
@@ -67,6 +106,7 @@ export class SchemaRepository {
           hash,
           createdAt: new Date(),
         };
+        await approveJob(record.version);
         await versions.insertOne(record, { session });
         const update = await registry.updateOne(
           { _id: 'global', version: expectedVersion },

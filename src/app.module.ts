@@ -1,3 +1,5 @@
+import { ReviewController } from './resumes/review.controller';
+import { EditingService } from './resumes/editing.service';
 import { ParsingService } from './parsing/parsing.service';
 import { ModelGateway } from './adapters/ports';
 import { LiteLlmGateway } from './ai/model.gateway';
@@ -27,11 +29,17 @@ import { AppService } from './app.service';
       exclude: ['/api/{*path}'],
     }),
   ],
-  controllers: [AppController, ResumesController, UploadsController],
+  controllers: [
+    AppController,
+    ResumesController,
+    UploadsController,
+    ReviewController,
+  ],
   providers: [
     AppService,
     LocalDocumentExtractor,
     ParsingService,
+    EditingService,
     { provide: ModelGateway, useClass: LiteLlmGateway },
   ],
 })

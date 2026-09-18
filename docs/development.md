@@ -53,3 +53,7 @@ A single background scheduler claims jobs with three-minute MongoDB leases. Each
 Model calls use the configured LiteLLM chat-completions endpoint with no tools, no transport retries, a 60-second request timeout and 12,000 output-token cap. Malformed JSON is a failed iteration; provider errors produce a visible failed job for user review. Ambient LangSmith/LangChain tracing and verbose model logs are disabled to prevent exporting resume content. Worker proposals and judge feedback are screened before storage or reuse.
 
 Run `yarn build:server && node scripts/smoke-models.cjs` after configuring `.env` to check both models with synthetic data. This sends four bounded calls and applies the production acceptance contract. Live evaluation has not run in this workspace because credentials/model identifiers are absent. The deterministic MongoDB tests use the real graph with a scripted model adapter; they do not establish live model quality.
+
+## Review and editing
+
+Failed/exhausted jobs pause in application-owned MongoDB state. User approval validates schema/data and PII again, records the approval source separately, and continues only the next stage without resetting counters. Schema publication and the review transition share one transaction. Recursive editors support all schema field types; published field types remain locked in schema review. Existing resumes always edit against their recorded version. Contact updates compare both contact and resume revisions, so they cannot authorize an accidental overwrite of a newer resume edit.

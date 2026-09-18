@@ -263,6 +263,7 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
         data: candidate,
         revision: 0,
         acceptanceSource: 'judge',
+        schemaAcceptanceSource: job.schemaApprovalSource ?? 'judge',
         createdAt: new Date(),
         updatedAt: new Date(),
       },

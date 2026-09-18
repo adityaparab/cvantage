@@ -1,5 +1,6 @@
+import ResumeEditor from './components/ResumeEditor'
 import UploadResume from './components/UploadResume'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api, ApiError, setCsrfToken } from './lib/api'
 import './App.css'
@@ -11,6 +12,8 @@ export default function App() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [selected,setSelected]=useState<string|null>(null)
+  const refreshResumes=useCallback(()=>{api<Resume[]>('/resumes').then(setResumes).catch(()=>setError('Could not refresh resumes.'))},[])
   const [resumes, setResumes] = useState<Resume[]>([])
   useEffect(() => {
     let active = true
@@ -36,7 +39,7 @@ export default function App() {
   }
   async function logout() {
     setBusy(true); setError('')
-    try { await api('/auth/logout', { method: 'POST', body: '{}' }); setUser(null); setResumes([]); setCsrfToken('') }
+    try { await api('/auth/logout', { method: 'POST', body: '{}' }); setUser(null); setResumes([]);setSelected(null); setCsrfToken('') }
     catch { setError('Could not sign out. Please try again.') }
     finally { setBusy(false) }
   }
@@ -45,7 +48,7 @@ export default function App() {
     <main>
       {!ready ? <p role="status">Loading your workspace…</p> : user ? <>
         <p className="eyebrow">YOUR WORKSPACE</p><h1>Your next chapter starts here.</h1><p className="muted">Signed in as {user.email}</p>
-        <UploadResume /><section className="panel"><h2>Your resumes</h2>{resumes.length ? <ul>{resumes.map((resume) => <li key={resume._id}>Resume · schema v{resume.schemaVersion} · {new Date(resume.updatedAt).toLocaleDateString()}</li>)}</ul> : <p className="muted">No resumes yet. Your saved resumes will appear here.</p>}</section>
+        {selected?<ResumeEditor key={selected} id={selected} onClose={()=>{setSelected(null);refreshResumes()}}/>:<UploadResume onComplete={refreshResumes} />}<section className="panel"><h2>Your resumes</h2>{resumes.length ? <ul>{resumes.map((resume) => <li key={resume._id}><button className="text-button" onClick={()=>setSelected(resume._id)}>Resume · {new Date(resume.updatedAt).toLocaleDateString()} · Open and edit</button></li>)}</ul> : <p className="muted">No resumes yet. Your saved resumes will appear here.</p>}</section>
       </> : <section className="auth-layout"><div><p className="eyebrow">A CLEARER WAY FORWARD</p><h1>Your experience.<br/>The right words.</h1><p className="intro">Build a resume that reflects your experience and speaks to your next opportunity.</p></div>
         <form className="panel" onSubmit={(event) => void authenticate(event)}><h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
           <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} /></label>

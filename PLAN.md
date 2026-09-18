@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 1–3 merged; milestone 4 implemented and verified offline on `feat/resume-parsing`.
-**Next action:** merge parsing milestone, then implement user review and schema-driven editing. Live proxy evaluation is pending .env configuration.
+**Current state:** milestones 1–4 merged; milestone 5 verified on `feat/resume-review`.
+**Next action:** merge review milestone, then implement job-specific tailoring. Live proxy evaluation is pending .env configuration.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 2. Authentication and application shell | Complete | 1 | Full build, server/client lint, 8 unit tests, 9 MongoDB/HTTP tests, 2 client behavior tests |
 | 3. Upload, extraction, and PII separation | Complete | 1–2 | Full build, both linters, 14 unit, 10 integration, 2 client tests; real PDF/DOCX/DOC fixtures |
 | 4. Global schema registry and bounded parsing graph | Complete (offline); live evaluation pending | 1–3 | Server build/lint, 14 unit and 18 integration tests; bounded graph and recovery tested |
-| 5. User review and schema-driven editing | Not started | 4 | — |
+| 5. User review and schema-driven editing | Complete | 4 | Full build, both linters, 20 integration and 4 client tests |
 | 6. Job-specific tailoring | Not started | 5 | — |
 | 7. On-demand PDF and DOCX export | Not started | 3, 5; 6 for tailored variants | — |
 | 8. End-to-end readiness and documentation | Not started | 1–7 | — |
@@ -175,11 +175,11 @@ Completion: deterministic fake-model tests cover early acceptance, fifth-iterati
 
 Dependencies: milestone 4.
 
-- [ ] Render nested objects, arrays, categorized skills, optional fields, and discovered sections using the record's schema version. Display PII in a separate form.
-- [ ] Show unresolved issues, confidence, and stage-specific corrections. Translate schema review into editable field definitions rather than requiring users to write raw JSON.
-- [ ] Implement review approval that rechecks structure and PII, records the user's decision separately, and resumes only the appropriate next stage. Review does not reset exhausted model loops.
-- [ ] Guard global schema publication from destructive user edits or user-specific values; user review cannot bypass required sections, compatibility, or privacy checks.
-- [ ] Preserve user corrections with revision checks. Reject stale writes instead of overwriting newer edits or replacing them with regenerated values.
+- [x] Render nested objects, arrays, categorized skills, optional fields, and discovered sections using the record's schema version. Display PII in a separate form.
+- [x] Show unresolved issues, confidence, and stage-specific corrections. Translate schema review into editable field definitions rather than requiring users to write raw JSON.
+- [x] Implement review approval that rechecks structure and PII, records the user's decision separately, and resumes only the appropriate next stage. Review does not reset exhausted model loops.
+- [x] Guard global schema publication from destructive user edits or user-specific values; user review cannot bypass required sections, compatibility, or privacy checks.
+- [x] Preserve user corrections with revision checks. Reject stale writes instead of overwriting newer edits or replacing them with regenerated values.
 
 Completion: users can resolve schema and mapping failures, edit every supported field, and separately correct PII. Tests cover invalid approval, stale writes, old-schema editing, and preservation of corrections.
 
@@ -264,3 +264,7 @@ For future entries, record: milestone/task, concrete changed paths, checks and r
 | Upload merged | [PR #3](https://github.com/adityaparab/cvantage/pull/3), `feat/resume-upload` → `main` | Merge confirmed | Milestone 4 parsing graph |
 
 | Parsing implementation | LiteLLM adapter, LangGraph worker/judge/decision nodes, durable MongoDB snapshots and leases, cancellation, bounded counters and schema pinning | Server build/lint; 14 unit tests and 18 integration tests pass, including early/fifth acceptance, both-stage exhaustion, malformed judges, transport errors, restart and concurrent claims | Live smoke pending .env; create/merge PR, then user review |
+
+| Parsing merged | [PR #4](https://github.com/adityaparab/cvantage/pull/4), `feat/resume-parsing` → `main` | Merge confirmed | User review and editing |
+
+| Review implementation | Recursive field/schema editors, separate PII form, revision-safe editing, atomic user schema approval and mapping acceptance | Full build, both linters, 20 integration tests and 4 client tests pass. Invalid/PII/stale approvals rejected; old records remain editable against original schema | Merge review PR, then tailoring |
