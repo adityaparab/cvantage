@@ -9,7 +9,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 ## Status and next action
 
 **Current state:** milestone 14 is implemented and verified: schema modification has one worker–judge pass; mapping retains its five-attempt loop. Schemas stay internal; parsed resumes require user approval.
-**Next action:** merge `feat/single-pass-schema`. Live provider quality evaluation and Railway deployment remain separate pending work.
+**Next action:** live provider quality evaluation and Railway deployment remain separate pending work. [PR #15](https://github.com/adityaparab/cvantage/pull/15) records milestone 14 and its merge status.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -277,7 +277,7 @@ Completion: a fresh startup seeds the supplied file; resumes can add only approv
 - [x] Show one preparation pass in workflow activity and avoid promising another schema attempt.
 - [x] Verify schema failure/recovery/concurrency and mapping-budget regressions; update product/setup documentation. Full build/both linters, 40 unit, 41 integration and 11 client tests pass; Chromium confirms the one-pass display and complete upload-to-export flow.
 
-Completion: no schema correction loop or replay after interruptions/conflicts. Mapping keeps its existing budget and user approval. Merge the dedicated feature PR before further implementation.
+Completion: no schema correction loop or replay after interruptions/conflicts. Mapping keeps its existing budget and user approval. [PR #15](https://github.com/adityaparab/cvantage/pull/15) records the dedicated feature change and merge status.
 
 ## Verification commands
 
@@ -333,6 +333,6 @@ yarn test:models
 | Appearance selection | Light, Dark, and System (default); saved preference, live OS changes, pre-paint initialization and shared color tokens | Build/client lint; 7 client tests; Chromium workflow plus appearance/reload checks; both palettes inspected | [PR #12](https://github.com/adityaparab/cvantage/pull/12) merged; streamed workflow activity next |
 | Streamed workflow activity | `src/activity`, streaming LiteLLM adapter, protected progress persistence, activity routes, upload/tailoring redirects and notification dropdown | Full build/both linters; 35 unit, 30 integration, 9 client tests; full Chromium journey with 15 redacted requests, retry/loop/reload checks and inspected mobile/dark dropdown | [PR #13](https://github.com/adityaparab/cvantage/pull/13), `feat/workflow-activity`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Seeded schema extraction | Supplied `schema/schema.json`, startup seed transaction, additive/evidence-based worker contract, baseline validation/editor/export support and historical compatibility | Full build/both linters; 40 unit, 36 integration, 10 client tests; complete Chromium journey and unchanged-schema version reuse | [PR #14](https://github.com/adityaparab/cvantage/pull/14), `feat/seeded-resume-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
-| Single-pass schema modification | Stage-specific limits, terminal schema rejection/conflicts, restart protection and corrected activity labels | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and full resume journey | Merge `feat/single-pass-schema`; live provider evaluation and Railway remain separate |
+| Single-pass schema modification | Stage-specific limits, terminal schema rejection/conflicts, restart protection and corrected activity labels | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and full resume journey | [PR #15](https://github.com/adityaparab/cvantage/pull/15), `feat/single-pass-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
