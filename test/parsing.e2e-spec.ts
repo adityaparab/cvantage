@@ -1,3 +1,5 @@
+import { EditingService } from '../src/resumes/editing.service';
+import { SchemaRepository } from '../src/database/schema.repository';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -242,5 +244,111 @@ describe('durable worker/judge parsing', () => {
     await work;
     expect(await getJob(job)).toBeNull();
     expect(await db.db.collection('resumes').countDocuments()).toBe(0);
+  });
+  it('user schema approval is atomic and continues mapping without resetting schema attempts', async () => {
+    const job = await seed({ schemaIterations: 5, status: 'review_required' });
+    const edit = app.get(EditingService);
+    await expect(
+      edit.approve(job.ownerId, job._id, {
+        revision: 0,
+        stage: 'schema',
+        candidate: {},
+        approve: true,
+      }),
+    ).rejects.toThrow();
+    await edit.approve(job.ownerId, job._id, {
+      revision: 0,
+      stage: 'schema',
+      candidate: BASE_RESUME_SCHEMA,
+      approve: true,
+    });
+    expect(await getJob(job)).toMatchObject({
+      stage: 'mapping',
+      schemaIterations: 5,
+      mappingIterations: 0,
+      schemaApprovalSource: 'user',
+    });
+    await expect(
+      edit.approve(job.ownerId, job._id, {
+        revision: 0,
+        stage: 'schema',
+        candidate: BASE_RESUME_SCHEMA,
+        approve: true,
+      }),
+    ).rejects.toThrow();
+    expect(await db.db.collection('schemaVersions').countDocuments()).toBe(1);
+  });
+  it('mapping approval enforces privacy, records user decision, and old-schema edits preserve corrections', async () => {
+    const schemas = app.get(SchemaRepository);
+    const schema = await schemas.publish(BASE_RESUME_SCHEMA, 0);
+    const job = await seed({
+      stage: 'mapping',
+      schemaVersion: schema.version,
+      mappingIterations: 5,
+      status: 'review_required',
+    });
+    const edit = app.get(EditingService);
+    const approval = {
+      revision: 0,
+      stage: 'mapping',
+      approve: true,
+      candidate: data,
+    };
+    await expect(
+      edit.approve('another-owner', job._id, approval),
+    ).rejects.toThrow();
+    await expect(
+      edit.approve(job.ownerId, job._id, {
+        ...approval,
+        candidate: { ...data, professionalSummary: 'Synthetic Applicant' },
+      }),
+    ).rejects.toThrow();
+    await edit.approve(job.ownerId, job._id, approval);
+    expect(await getJob(job)).toBeNull();
+    await schemas.publish(
+      {
+        ...BASE_RESUME_SCHEMA,
+        properties: {
+          ...BASE_RESUME_SCHEMA.properties,
+          education: { type: 'string' },
+        },
+      },
+      1,
+    );
+    const changed = { ...data, professionalSummary: 'Corrected by user' };
+    const record = await edit.update(job.ownerId, job.resumeId, {
+      revision: 0,
+      data: changed,
+    });
+    expect(record).toMatchObject({
+      schemaVersion: 1,
+      revision: 1,
+      acceptanceSource: 'user',
+      data: changed,
+    });
+    await expect(
+      edit.update(job.ownerId, job.resumeId, { revision: 0, data }),
+    ).rejects.toThrow();
+    const pii = {
+      name: 'Revised Applicant',
+      email: 'new@example.test',
+      contactNumber: '',
+      location: '',
+    };
+    await expect(
+      edit.updatePii(job.ownerId, job.resumeId, {
+        revision: 0,
+        resumeRevision: 0,
+        pii,
+      }),
+    ).rejects.toThrow();
+    await edit.updatePii(job.ownerId, job.resumeId, {
+      revision: 0,
+      resumeRevision: 1,
+      pii,
+    });
+    await expect(
+      edit.update(job.ownerId, job.resumeId, { revision: 1, data }),
+    ).rejects.toThrow();
   });
 });

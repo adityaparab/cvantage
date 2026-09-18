@@ -7,6 +7,7 @@ export interface ResumeRecord {
   data: ResumeData;
   revision: number;
   acceptanceSource: 'judge' | 'user';
+  schemaAcceptanceSource?: 'judge' | 'user';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +40,7 @@ export interface ParseJob {
   source: string;
   piiConfirmed?: boolean;
   failureCode?: string;
+  schemaApprovalSource?: 'user';
   candidate?: unknown;
   judge?: JudgeResult;
   revision: number;
