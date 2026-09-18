@@ -1,3 +1,5 @@
+import { AuthModule } from './auth/auth.module';
+import { ResumesController } from './resumes/resumes.controller';
 import { DatabaseModule } from './database/database.module';
 import { join } from 'path';
 import { Module } from '@nestjs/common';
@@ -8,6 +10,7 @@ import { AppService } from './app.service';
 @Module({
   imports: [
     DatabaseModule,
+    AuthModule,
     // Serve the compiled React SPA (client/dist) for every non-API request.
     // Any unknown path (e.g. a deep link like /about) falls back to index.html
     // so the client-side router can take over — this is the SPA "404 redirect".
@@ -19,7 +22,7 @@ import { AppService } from './app.service';
       exclude: ['/api/{*path}'],
     }),
   ],
-  controllers: [AppController],
+  controllers: [AppController, ResumesController],
   providers: [AppService],
 })
 export class AppModule {}

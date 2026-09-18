@@ -33,3 +33,9 @@ Schema publication uses a MongoDB transaction to insert an immutable version and
 Parsing acceptance inserts the accepted resume and deletes its temporary parsing record in one transaction. Job expiry uses `expiresAt` with a TTL index; callers must also reject expired jobs because background TTL deletion is asynchronous. Acceptance and review services must perform runtime structure and PII validation before repository writes.
 
 The editor-compatible schema subset supports bounded nested objects, arrays, strings, numbers, and booleans. Objects have explicit properties and forbid unknown properties. External references, executable expressions, arbitrary schema keywords, and identifying field names are rejected. Four base sections are required. Null is not supported in this initial subset; use an empty string, array, or object where the declared type permits it.
+
+## Authentication
+
+Passwords use salted scrypt (N=32768, r=8, p=1). Sessions last seven days, are stored as keyed hashes, and are sent through HttpOnly, SameSite=Strict cookies (Secure in production). Mutations require a session CSRF token. Login/registration require a custom same-origin request header and have a bounded per-process IP attempt limit. Configure trusted proxy handling and a shared throttle store before running multiple public-facing instances. Authentication tests use synthetic accounts only.
+
+Client behavior tests: `yarn --cwd client test`.

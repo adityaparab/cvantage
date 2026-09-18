@@ -8,14 +8,14 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestone 1 implemented and verified on `feat/foundations`; PR merge pending.
-**Next action:** merge the foundations PR, then start authentication on `feat/authentication`.
+**Current state:** milestone 1 merged in PR #1; milestone 2 implemented and verified, awaiting PR merge.
+**Next action:** merge authentication, then begin upload/extraction on `feat/resume-upload`.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
 | 0. Specification, agent instructions, and skills | Complete | — | `PROJECT.md`, `AGENT.md`, installed skills and source manifest; skill metadata, links, and upstream copies validated |
-| 1. Configuration, persistence, and contracts | Verified; merge pending | 0 | Build, both linters, 8 unit tests and 6 real MongoDB/HTTP integration tests pass |
-| 2. Authentication and application shell | Not started | 1 | — |
+| 1. Configuration, persistence, and contracts | Complete | 0 | Build, both linters, 8 unit tests and 6 real MongoDB/HTTP integration tests pass |
+| 2. Authentication and application shell | Verified; merge pending | 1 | Full build, server/client lint, 8 unit tests, 9 MongoDB/HTTP tests, 2 client behavior tests |
 | 3. Upload, extraction, and PII separation | Not started | 1–2 | — |
 | 4. Global schema registry and bounded parsing graph | Not started | 1–3 | — |
 | 5. User review and schema-driven editing | Not started | 4 | — |
@@ -136,10 +136,10 @@ Completion: startup validates required configuration without exposing secrets; r
 
 Dependencies: milestone 1.
 
-- [ ] Implement email/password registration, password hashing, login, logout, and current-user lookup. Use server-managed sessions with HttpOnly cookies, appropriate Secure/SameSite settings, and CSRF protection for mutations.
-- [ ] Add request validation, login throttling, and owner-scoped access helpers.
-- [ ] Replace starter screens with registration/login, a protected resume list, navigation, and shared loading/error states.
-- [ ] Add a small client test setup for critical interactions as real features arrive.
+- [x] Implement email/password registration, password hashing, login, logout, and current-user lookup. Use server-managed sessions with HttpOnly cookies, appropriate Secure/SameSite settings, and CSRF protection for mutations.
+- [x] Add request validation, login throttling, and owner-scoped access helpers.
+- [x] Replace starter screens with registration/login, a protected resume list, navigation, and shared loading/error states.
+- [x] Add a small client test setup for critical interactions as real features arrive.
 
 Completion: a user can register, sign in, refresh the page, and sign out. Tests prove unauthenticated and cross-user requests cannot access protected data, including PII and job status.
 
@@ -252,3 +252,7 @@ yarn test:e2e --runInBand
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
 
 | Foundations implementation | Added `src/config`, `src/contracts`, `src/database`, adapter ports, `.env.example`, test database scripts, and `docs/development.md` | Full build; server/client lint; 8 unit tests; 6 HTTP/repository tests against local MongoDB 8.3 replica set | Branch `feat/foundations`; create and merge PR before milestone 2. Retention confirmed: acceptance cleanup and 30-day expiry. |
+
+| Foundations merged | [PR #1](https://github.com/adityaparab/cvantage/pull/1), `feat/foundations` → `main` | Verified merge via GitHub; started next branch from updated main | Milestone 2 authentication |
+
+| Authentication implementation | `src/auth`, protected resume routes, React workspace, API helper and client test setup | Build and both linters pass; 8 unit, 9 integration, 2 client tests pass. Session restoration/revocation, expiry, CSRF and cross-user resume/PII isolation verified | Branch `feat/authentication`; create and merge PR before milestone 3 |

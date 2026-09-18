@@ -76,6 +76,6 @@ yarn test --runInBand
 yarn test:e2e --runInBand
 ```
 
-`yarn lint` applies fixes: inspect its diff. The client currently has no test script; inspect its manifest before claiming to run one. For documentation-only work, verify links, consistency, and formatting rather than running unrelated application tests. Keep default AI tests deterministic and offline, and use synthetic resumes instead of real personal data.
+`yarn lint` applies fixes: inspect its diff. Run client behavior tests with `yarn --cwd client test` when changing client behavior. For documentation-only work, verify links, consistency, and formatting rather than running unrelated application tests. Keep default AI tests deterministic and offline, and use synthetic resumes instead of real personal data.
 
 Finish with a concise account of what changed, what passed, and any remaining limitation or blocker. Distinguish checks actually run from proposed checks; do not claim a feature works based only on a stub, mock, or plan.
