@@ -33,9 +33,12 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/serve-static": "^5.0.5",
     "ajv": "^8.20.0",
+    "mammoth": "^1.12.3",
     "mongodb": "^7.6.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "word-extractor": "^1.0.4",
+    "yauzl": "^3.4.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -46,8 +49,10 @@
     "@nestjs/testing": "^11.0.1",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.2.0",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
+    "@types/yauzl": "^3.4.0",
     "concurrently": "^10.0.3",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

@@ -8,15 +8,15 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestone 1 merged in PR #1; milestone 2 implemented and verified, awaiting PR merge.
-**Next action:** merge authentication, then begin upload/extraction on `feat/resume-upload`.
+**Current state:** milestones 1–2 merged; milestone 3 verified on `feat/resume-upload`, ready for PR.
+**Next action:** merge milestone 3, then implement durable parsing on `feat/resume-parsing`.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
 | 0. Specification, agent instructions, and skills | Complete | — | `PROJECT.md`, `AGENT.md`, installed skills and source manifest; skill metadata, links, and upstream copies validated |
 | 1. Configuration, persistence, and contracts | Complete | 0 | Build, both linters, 8 unit tests and 6 real MongoDB/HTTP integration tests pass |
-| 2. Authentication and application shell | Verified; merge pending | 1 | Full build, server/client lint, 8 unit tests, 9 MongoDB/HTTP tests, 2 client behavior tests |
-| 3. Upload, extraction, and PII separation | Not started | 1–2 | — |
+| 2. Authentication and application shell | Complete | 1 | Full build, server/client lint, 8 unit tests, 9 MongoDB/HTTP tests, 2 client behavior tests |
+| 3. Upload, extraction, and PII separation | Complete | 1–2 | Full build, both linters, 14 unit, 10 integration, 2 client tests; real PDF/DOCX/DOC fixtures |
 | 4. Global schema registry and bounded parsing graph | Not started | 1–3 | — |
 | 5. User review and schema-driven editing | Not started | 4 | — |
 | 6. Job-specific tailoring | Not started | 5 | — |
@@ -147,12 +147,12 @@ Completion: a user can register, sign in, refresh the page, and sign out. Tests 
 
 Dependencies: milestones 1–2.
 
-- [ ] Evaluate parser adapters against representative PDF, DOCX, and legacy DOC fixtures; include any required system executable in setup documentation. Do not assume DOC is interchangeable with DOCX.
-- [ ] Enforce the 20,000,000-byte limit before buffering oversized uploads; verify document signatures/content and reject malformed, encrypted/unsupported, or unreadable documents clearly.
-- [ ] Bound extraction time, memory, decompression, and parser concurrency. Prefer memory; isolate and clean up parser-required temporary files on success, failure, cancellation, and abandoned-job recovery.
-- [ ] Extract name, phone, email, and location locally, store them separately, and redact their occurrences before any LLM request. Apply the same checks to later edits and job descriptions before model use.
-- [ ] Add a pre-LLM correction screen for uncertain PII detection; do not send unredacted text to a model to identify PII. Use synthetic fixtures to exercise names, locations, repeated values, headers, and footers.
-- [ ] Show upload validation, extraction progress, and actionable errors in React. Reject image-only documents without readable text until OCR is explicitly included.
+- [x] Evaluate parser adapters against representative PDF, DOCX, and legacy DOC fixtures; include any required system executable in setup documentation. Do not assume DOC is interchangeable with DOCX.
+- [x] Enforce the 20,000,000-byte limit before buffering oversized uploads; verify document signatures/content and reject malformed, encrypted/unsupported, or unreadable documents clearly.
+- [x] Bound extraction time, memory, decompression, and parser concurrency. Prefer memory; isolate and clean up parser-required temporary files on success, failure, cancellation, and abandoned-job recovery.
+- [x] Collect user-confirmed name/location and locally detect/redact email/phone, store them separately, and redact their occurrences before any LLM request. Apply the same checks to later edits and job descriptions before model use.
+- [x] Add a pre-LLM correction screen for uncertain PII detection; do not send unredacted text to a model to identify PII. Use synthetic fixtures to exercise names, locations, repeated values, headers, and footers.
+- [x] Show upload validation, extraction progress, and actionable errors in React. Reject image-only documents without readable text until OCR is explicitly included.
 
 Completion: each allowed format extracts correctly; boundary-size and misleading-extension cases are tested; no original file survives processing. Captured model-input fixtures contain none of the known test PII.
 
@@ -256,3 +256,7 @@ For future entries, record: milestone/task, concrete changed paths, checks and r
 | Foundations merged | [PR #1](https://github.com/adityaparab/cvantage/pull/1), `feat/foundations` → `main` | Verified merge via GitHub; started next branch from updated main | Milestone 2 authentication |
 
 | Authentication implementation | `src/auth`, protected resume routes, React workspace, API helper and client test setup | Build and both linters pass; 8 unit, 9 integration, 2 client tests pass. Session restoration/revocation, expiry, CSRF and cross-user resume/PII isolation verified | Branch `feat/authentication`; create and merge PR before milestone 3 |
+
+| Authentication merged | [PR #2](https://github.com/adityaparab/cvantage/pull/2), `feat/authentication` → `main` | Merge confirmed; next branch created from updated main | Milestone 3 uploads |
+
+| Upload implementation | Memory-only PDF/DOCX/DOC extraction, bounded workers, separate PII, redacted-source confirmation and 30-day expiry | Build, both linters, 14 unit, 10 integration and 2 client tests pass; synthetic fixtures cover all formats | Merge `feat/resume-upload`, then parsing graph. Name/location supplied by user; mandatory source review resolves uncertain local detection. |

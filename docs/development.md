@@ -39,3 +39,9 @@ The editor-compatible schema subset supports bounded nested objects, arrays, str
 Passwords use salted scrypt (N=32768, r=8, p=1). Sessions last seven days, are stored as keyed hashes, and are sent through HttpOnly, SameSite=Strict cookies (Secure in production). Mutations require a session CSRF token. Login/registration require a custom same-origin request header and have a bounded per-process IP attempt limit. Configure trusted proxy handling and a shared throttle store before running multiple public-facing instances. Authentication tests use synthetic accounts only.
 
 Client behavior tests: `yarn --cwd client test`.
+
+## Upload parsing
+
+Install Poppler (`pdftotext`) and util-linux (`prlimit`) on Linux. DOCX uses Mammoth with bounded ZIP inspection; legacy DOC uses word-extractor. Worker threads isolate parsing with a 20-second timeout, 128 MB JS heap and at most two concurrent extractions. PDF subprocesses have additional CPU/address-space limits. The upload cap is 20,000,000 bytes; multipart buffering stops at one byte above this inclusive limit. Textless/image-only, corrupt or unsupported documents require a new readable upload; OCR is not implemented.
+
+Original bytes remain in memory and are cleared after extraction; originals are never written to disk. The user supplies name/location/contact values, local patterns also redact email and phone numbers, and the user must inspect/correct the redacted text before any model call. This review is essential for names, locations, headers and unusual contact formats that cannot be identified reliably by patterns alone. PII is stored separately. Redacted source and review drafts expire after 30 days and will be deleted upon acceptance. Test fixtures contain synthetic contact details only.

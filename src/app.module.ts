@@ -1,3 +1,5 @@
+import { UploadsController } from './documents/uploads.controller';
+import { LocalDocumentExtractor } from './documents/document-extractor';
 import { AuthModule } from './auth/auth.module';
 import { ResumesController } from './resumes/resumes.controller';
 import { DatabaseModule } from './database/database.module';
@@ -22,7 +24,7 @@ import { AppService } from './app.service';
       exclude: ['/api/{*path}'],
     }),
   ],
-  controllers: [AppController, ResumesController],
-  providers: [AppService],
+  controllers: [AppController, ResumesController, UploadsController],
+  providers: [AppService, LocalDocumentExtractor],
 })
 export class AppModule {}

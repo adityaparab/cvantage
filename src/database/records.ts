@@ -37,6 +37,7 @@ export interface ParseJob {
   mappingIterations: number;
   schemaVersion?: number;
   source: string;
+  piiConfirmed?: boolean;
   candidate?: unknown;
   judge?: JudgeResult;
   revision: number;
