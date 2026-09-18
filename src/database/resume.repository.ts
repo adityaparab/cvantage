@@ -85,7 +85,7 @@ export class ResumeRepository {
           );
         await this.database.db
           .collection<ResumeRecord>('resumes')
-          .insertOne(record, { session });
+          .insertOne({ ...record, workflowId: jobId }, { session });
       });
     } finally {
       await session.endSession();

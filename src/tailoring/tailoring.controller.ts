@@ -20,7 +20,7 @@ export class TailoringController {
     @Param('resumeId') id: string,
     @Body() input: unknown,
   ) {
-    return this.service.create(req.session.ownerId, id, input);
+    return this.service.start(req.session.ownerId, id, input);
   }
   @Get('variants') list(
     @Req() req: AuthRequest,

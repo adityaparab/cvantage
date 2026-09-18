@@ -27,6 +27,7 @@ const source = {
 };
 const received = [];
 let mappingJudgments = 0;
+let retried = false;
 const proxy = http.createServer(async (request, response) => {
   try {
     let raw = '';
@@ -35,6 +36,14 @@ const proxy = http.createServer(async (request, response) => {
     const instructions = body.messages[0].content;
     const input = JSON.parse(body.messages[1].content);
     received.push(body.messages);
+    if (instructions.startsWith('Map ALL') && !retried) {
+      retried = true;
+      response.writeHead(429, { 'Content-Type': 'application/json' });
+      response.end(
+        JSON.stringify({ error: { message: 'Synthetic transient failure' } }),
+      );
+      return;
+    }
     let result;
     if (instructions.startsWith('Design a reusable'))
       result = BASE_RESUME_SCHEMA;
@@ -72,23 +81,19 @@ const proxy = http.createServer(async (request, response) => {
             ],
       };
     }
-    response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(
-      JSON.stringify({
-        id: randomUUID(),
-        object: 'chat.completion',
-        created: Math.floor(Date.now() / 1000),
-        model: body.model,
-        choices: [
-          {
-            index: 0,
-            message: { role: 'assistant', content: JSON.stringify(result) },
-            finish_reason: 'stop',
-          },
-        ],
-        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-      }),
+    assert.equal(body.stream, true);
+    response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    const content = JSON.stringify(result);
+    for (let offset = 0; offset < content.length; offset += 35) {
+      response.write(
+        `data: ${JSON.stringify({ id: 'synthetic-stream', object: 'chat.completion.chunk', created: 1, model: body.model, choices: [{ index: 0, delta: { content: content.slice(offset, offset + 35) }, finish_reason: null }] })}\n\n`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 65));
+    }
+    response.write(
+      `data: ${JSON.stringify({ id: 'synthetic-stream', object: 'chat.completion.chunk', created: 1, model: body.model, choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] })}\n\n`,
     );
+    response.end('data: [DONE]\n\n');
   } catch {
     response.writeHead(500);
     response.end('{}');
@@ -172,15 +177,21 @@ async function main() {
     await page.goto(origin);
     assert.equal(await page.getByLabel('Appearance').inputValue(), 'system');
     await page.emulateMedia({ colorScheme: 'dark' });
-    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'dark',
+    );
     await page.screenshot({ path: join(output, 'appearance-dark.png') });
     await page.getByLabel('Appearance').selectOption('light');
     await page.reload();
-    await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'light',
+    );
     assert.equal(await page.getByLabel('Appearance').inputValue(), 'light');
     await page.screenshot({ path: join(output, 'appearance-light.png') });
     await page.getByLabel('Appearance').selectOption('system');
-    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'dark',
+    );
     await page.emulateMedia({ colorScheme: 'light' });
 
     await page
@@ -213,18 +224,95 @@ async function main() {
     await page
       .getByRole('button', { name: 'Upload resume', exact: true })
       .click();
+    await page.waitForURL('**/activity/*');
+    const parsingUrl = page.url();
     const redacted = await page.getByLabel('Redacted resume text').inputValue();
     assert(!/Synthetic Applicant|applicant@example.test|Warsaw/.test(redacted));
     await page
       .getByLabel('I checked the text and removed identifying details.')
       .check();
     await page.getByRole('button', { name: 'Confirm redacted text' }).click();
-    await page.getByRole('button', { name: '← Back to uploads' }).click();
-    await page.getByRole('button', { name: /Resume upload ·/ }).click();
+    await page.getByRole('link', { name: '← Back to workspace' }).click();
+    await page.getByRole('button', { name: /Workflow notifications/ }).click();
+    await page
+      .getByRole('region', { name: 'Active workflows' })
+      .getByRole('link', { name: /Resume parsing/ })
+      .click();
+    assert.equal(page.url(), parsingUrl);
+    await page
+      .getByText('Live model output · provisional', { exact: true })
+      .first()
+      .waitFor();
+    await page.screenshot({
+      path: join(output, 'activity-stream.png'),
+      fullPage: true,
+    });
+    await page.reload();
+    await page
+      .getByRole('heading', { name: 'Resume parsing', exact: true })
+      .waitFor();
+    await page.getByRole('button', { name: /Workflow notifications/ }).click();
+    await page
+      .getByRole('region', { name: 'Active workflows' })
+      .getByRole('link')
+      .waitFor();
+    await page.screenshot({ path: join(output, 'notifications-desktop.png') });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByLabel('Appearance').selectOption('dark');
+    const dropdownBounds = await page
+      .getByRole('region', { name: 'Active workflows' })
+      .boundingBox();
+    const triggerBounds = await page
+      .getByRole('button', { name: /Workflow notifications/ })
+      .boundingBox();
+    assert(
+      dropdownBounds.y >= triggerBounds.y + triggerBounds.height,
+      'Mobile dropdown clears its trigger',
+    );
+    await page.screenshot({
+      path: join(output, 'notifications-mobile-dark.png'),
+    });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      'Activity/notification mobile overflow',
+    );
+    await page.keyboard.press('Escape');
+    assert.equal(
+      await page
+        .getByRole('button', { name: /Workflow notifications/ })
+        .getAttribute('aria-expanded'),
+      'false',
+    );
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.getByLabel('Appearance').selectOption('system');
     await page
       .getByRole('heading', { name: 'Review your parsed resume' })
       .waitFor();
     assert.equal(mappingJudgments, 5);
+    assert(retried);
+    await page
+      .getByText('Attempt 5 of 5 · Transport retries 0 of 2', { exact: true })
+      .first()
+      .waitFor();
+    await page.locator('summary').first().click();
+    await page.getByText(/Attempt 1 · success · 1 transport retries/).waitFor();
+    assert.equal(await page.getByText('secretSchema').count(), 0);
+    const activityResponse = await page.request.get(
+      origin + '/api/workflows/' + parsingUrl.split('/').at(-1),
+    );
+    const activity = await activityResponse.json();
+    assert(
+      activity.steps
+        .filter((step) => step.step.startsWith('preparation'))
+        .every((step) => step.output === ''),
+    );
+    assert(!JSON.stringify(activity).includes('Synthetic Applicant'));
+    await page.screenshot({
+      path: join(output, 'activity-review.png'),
+      fullPage: true,
+    });
     await page
       .getByLabel('Professional Summary', { exact: true })
       .fill('Reviewed software engineer.');
@@ -234,15 +322,15 @@ async function main() {
       )
       .check();
     await page.getByRole('button', { name: 'Approve parsed resume' }).click();
-    await page.getByRole('button', { name: /Open and edit/ }).click();
-    const editor = page
-      .locator('form')
-      .filter({
-        has: page.getByRole('button', {
-          name: 'Save resume changes',
-          exact: true,
-        }),
-      });
+    await page.getByRole('button', { name: /Open and edit/ }).waitFor();
+    await page.goto(parsingUrl);
+    await page.getByRole('link', { name: 'Open saved resume' }).click();
+    const editor = page.locator('form').filter({
+      has: page.getByRole('button', {
+        name: 'Save resume changes',
+        exact: true,
+      }),
+    });
     await editor
       .getByLabel('Professional Summary', { exact: true })
       .fill('User corrected experience with internal tools.');
@@ -261,6 +349,8 @@ async function main() {
       )
       .check();
     await page.getByRole('button', { name: 'Create tailored version' }).click();
+    await page.waitForURL('**/activity/*');
+    await page.getByRole('link', { name: 'Review tailored resume' }).click();
     await page
       .getByRole('heading', { name: 'Review your tailored version' })
       .waitFor();
@@ -273,13 +363,11 @@ async function main() {
       .getByRole('button', { name: 'Approve tailored version', exact: true })
       .click();
     await page.getByText('This saved version is approved.').waitFor();
-    const exports = page
-      .locator('section.exports')
-      .filter({
-        has: page.getByRole('heading', {
-          name: 'Download this tailored version',
-        }),
-      });
+    const exports = page.locator('section.exports').filter({
+      has: page.getByRole('heading', {
+        name: 'Download this tailored version',
+      }),
+    });
     for (const format of ['PDF', 'DOCX']) {
       const downloading = page.waitForEvent('download');
       await exports
@@ -339,6 +427,7 @@ async function main() {
     );
     const db = client.db(dbName);
     assert.equal(await db.collection('parseJobs').countDocuments(), 0);
+    assert.equal(await db.collection('workflowActivities').countDocuments(), 0);
     assert.equal(
       await db
         .collection('resumePii')

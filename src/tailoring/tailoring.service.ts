@@ -1,3 +1,6 @@
+import { trackedGenerate } from '../activity/model-progress';
+import type { StepRun, TailoringActivity } from '../activity/activity.types';
+import type { Pii } from '../documents/pii';
 import {
   BadRequestException,
   ConflictException,
@@ -20,6 +23,7 @@ import type { JudgeResult } from '../contracts/workflow';
 import { containsPii, redactPii } from '../documents/pii';
 import { preservesFacts } from './facts';
 export interface Variant {
+  workflowId?: string;
   _id: string;
   ownerId: string;
   resumeId: string;
@@ -79,7 +83,63 @@ export class TailoringService {
     if (!variant) throw new NotFoundException('Variant not found');
     return { ...variant, stale: variant.sourceRevision !== resume.revision };
   }
-  async create(ownerId: string, resumeId: string, input: unknown) {
+  async start(ownerId: string, resumeId: string, input: unknown) {
+    const body = createSchema.safeParse(input);
+    if (!body.success)
+      throw new BadRequestException(
+        'Provide a job description and confirm removal of identifying details',
+      );
+    const resume = await this.resumes.get(ownerId, resumeId);
+    if (resume.revision !== body.data.revision)
+      throw new ConflictException(
+        'Save or reload your latest resume before tailoring',
+      );
+    if (this.active.has(ownerId) || this.active.size >= 2)
+      throw new HttpException('Tailoring is busy; try again shortly', 429);
+    const activity: TailoringActivity = {
+      _id: randomUUID(),
+      ownerId,
+      resumeId,
+      status: 'running',
+      steps: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      expiresAt: new Date(Date.now() + 30 * 86400000),
+    };
+    const activities =
+      this.database.db.collection<TailoringActivity>('workflowActivities');
+    await activities.insertOne(activity);
+    // Only the redacted progress is durable; job descriptions remain in memory.
+    void this.create(ownerId, resumeId, input, activity)
+      .then(async (variant) => {
+        await activities.updateOne(
+          { _id: activity._id, status: 'running' },
+          {
+            $set: {
+              status: 'review_required',
+              variantId: variant._id,
+              updatedAt: new Date(),
+            },
+          },
+        );
+      })
+      .catch(async () => {
+        await activities.updateOne(
+          { _id: activity._id },
+          { $set: { status: 'failed', updatedAt: new Date() } },
+        );
+      })
+      .catch(() => {
+        /* Storage outages are recovered as interrupted activities on read. */
+      });
+    return { workflowId: activity._id, resumeId };
+  }
+  async create(
+    ownerId: string,
+    resumeId: string,
+    input: unknown,
+    activity?: TailoringActivity,
+  ) {
     const body = createSchema.safeParse(input);
     if (!body.success)
       throw new BadRequestException(
@@ -101,11 +161,17 @@ export class TailoringService {
           'Check identifying details in the source resume',
         );
       const description = redactPii(body.data.jobDescription, pii);
-      const candidate = await this.call('worker', prompt, {
-        sourceResume: resume.data,
-        schema: schema.definition,
-        jobDescription: description,
-      });
+      const candidate = await this.call(
+        'worker',
+        prompt,
+        {
+          sourceResume: resume.data,
+          schema: schema.definition,
+          jobDescription: description,
+        },
+        pii,
+        activity,
+      );
       if (
         !validateResumeData(schema.definition, candidate) ||
         containsPii(candidate, pii) ||
@@ -114,12 +180,18 @@ export class TailoringService {
         throw new BadRequestException(
           'The proposal changed factual fields or failed validation. Your source is unchanged; try a clearer job description.',
         );
-      const assessment = await this.call('judge', JUDGE_PROMPT, {
-        stage: 'mapping',
-        source: JSON.stringify(resume.data),
-        schema: schema.definition,
-        candidate,
-      });
+      const assessment = await this.call(
+        'judge',
+        JUDGE_PROMPT,
+        {
+          stage: 'mapping',
+          source: JSON.stringify(resume.data),
+          schema: schema.definition,
+          candidate,
+        },
+        pii,
+        activity,
+      );
       const parsed = judgeSchema.safeParse(assessment);
       const judge =
         parsed.success && !containsPii(parsed.data, pii)
@@ -127,6 +199,7 @@ export class TailoringService {
           : undefined;
       const variant: Variant = {
         _id: randomUUID(),
+        workflowId: activity?._id,
         ownerId,
         resumeId,
         sourceRevision: resume.revision,
@@ -141,6 +214,18 @@ export class TailoringService {
       };
       await this.variants.insertOne(variant);
       return variant;
+    } catch (error) {
+      if (activity) {
+        const last = activity.steps.at(-1);
+        if (last) last.status = 'failure';
+        await this.database.db
+          .collection<TailoringActivity>('workflowActivities')
+          .updateOne(
+            { _id: activity._id, status: 'running' },
+            { $set: { steps: activity.steps } },
+          );
+      }
+      throw error;
     } finally {
       this.active.delete(ownerId);
     }
@@ -149,9 +234,44 @@ export class TailoringService {
     role: 'worker' | 'judge',
     instructions: string,
     data: unknown,
+    pii: Pii,
+    activity?: TailoringActivity,
   ) {
     try {
-      return await this.models.generate(role, instructions, data);
+      if (!activity)
+        return await this.models.generate(role, instructions, data);
+      const run: StepRun = {
+        step: `tailoring_${role}`,
+        attempt: 1,
+        status: 'active',
+        retries: 0,
+        received: 0,
+        output: '',
+        startedAt: new Date(),
+      };
+      activity.steps.push(run);
+      return await trackedGenerate(
+        this.models,
+        role,
+        instructions,
+        data,
+        pii,
+        run,
+        async () => {
+          const result = await this.database.db
+            .collection<TailoringActivity>('workflowActivities')
+            .updateOne(
+              {
+                _id: activity._id,
+                status: 'running',
+                expiresAt: { $gt: new Date() },
+              },
+              { $set: { steps: activity.steps, updatedAt: new Date() } },
+            );
+          if (!result.matchedCount)
+            throw new ConflictException('Workflow expired');
+        },
+      );
     } catch {
       throw new ServiceUnavailableException(
         'AI tailoring could not finish. Your source resume is unchanged.',
@@ -174,20 +294,32 @@ export class TailoringService {
       throw new BadRequestException(
         'Check wording and identifying details. Correct factual fields in your source resume, then tailor again.',
       );
-    const saved = await this.variants.findOneAndUpdate(
-      { _id: id, ownerId, resumeId, revision: body.data.revision },
-      {
-        $set: {
-          data: body.data.data,
-          status: body.data.approve ? 'reviewed' : 'review_required',
-          updatedAt: new Date(),
-        },
-        $inc: { revision: 1 },
-      },
-      { returnDocument: 'after' },
-    );
-    if (!saved)
-      throw new ConflictException('Variant changed; reopen before saving');
-    return saved;
+    const validatedData = body.data.data;
+    const session = this.database.client.startSession();
+    try {
+      return await session.withTransaction(async () => {
+        const saved = await this.variants.findOneAndUpdate(
+          { _id: id, ownerId, resumeId, revision: body.data.revision },
+          {
+            $set: {
+              data: validatedData,
+              status: body.data.approve ? 'reviewed' : 'review_required',
+              updatedAt: new Date(),
+            },
+            $inc: { revision: 1 },
+          },
+          { returnDocument: 'after', session },
+        );
+        if (!saved)
+          throw new ConflictException('Variant changed; reopen before saving');
+        if (body.data.approve && saved.workflowId)
+          await this.database.db
+            .collection<TailoringActivity>('workflowActivities')
+            .deleteOne({ _id: saved.workflowId, ownerId }, { session });
+        return saved;
+      });
+    } finally {
+      await session.endSession();
+    }
   }
 }
