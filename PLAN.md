@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 1–2 merged; milestone 3 verified on `feat/resume-upload`, ready for PR.
-**Next action:** merge milestone 3, then implement durable parsing on `feat/resume-parsing`.
+**Current state:** milestones 1–3 merged; milestone 4 implemented and verified offline on `feat/resume-parsing`.
+**Next action:** merge parsing milestone, then implement user review and schema-driven editing. Live proxy evaluation is pending .env configuration.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -17,7 +17,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 1. Configuration, persistence, and contracts | Complete | 0 | Build, both linters, 8 unit tests and 6 real MongoDB/HTTP integration tests pass |
 | 2. Authentication and application shell | Complete | 1 | Full build, server/client lint, 8 unit tests, 9 MongoDB/HTTP tests, 2 client behavior tests |
 | 3. Upload, extraction, and PII separation | Complete | 1–2 | Full build, both linters, 14 unit, 10 integration, 2 client tests; real PDF/DOCX/DOC fixtures |
-| 4. Global schema registry and bounded parsing graph | Not started | 1–3 | — |
+| 4. Global schema registry and bounded parsing graph | Complete (offline); live evaluation pending | 1–3 | Server build/lint, 14 unit and 18 integration tests; bounded graph and recovery tested |
 | 5. User review and schema-driven editing | Not started | 4 | — |
 | 6. Job-specific tailoring | Not started | 5 | — |
 | 7. On-demand PDF and DOCX export | Not started | 3, 5; 6 for tailored variants | — |
@@ -160,14 +160,14 @@ Completion: each allowed format extracts correctly; boundary-size and misleading
 
 Dependencies: milestones 1–3. Apply the retention policy below to durable source/checkpoint storage.
 
-- [ ] Integrate LangChain through the configurable LiteLLM adapter. Verify configured model capabilities with a synthetic smoke test; validate outputs locally even when provider structured outputs are available.
-- [ ] Implement LangGraph stages: schema worker → schema judge → publish/reuse schema → mapping worker → mapping judge → save accepted resume, with explicit revision and review branches.
-- [ ] Give each stage its own maximum of five worker–judge iterations, including the first attempt. Stop on acceptance; malformed judge responses consume an iteration. Bound transport retries and timeouts separately.
-- [ ] Implement the exact acceptance gate: valid response, matching stage, `accept`, four true checks, confidence at least 0.90, empty issues, and successful application schema/PII validation.
-- [ ] Supply source text as data, separate from instructions. Validate and sanitize worker output and judge feedback before persistence or reuse. Grant parsing models no unrelated tools.
-- [ ] Publish only approved global schemas. Reuse unchanged definitions, atomically rebase concurrent additions within the remaining iteration budget, and route unresolved conflicts to review.
-- [ ] Pin the schema version before mapping and record it on the accepted resume. Leave existing resumes unchanged when a new global version appears.
-- [ ] Persist counters and sanitized workflow state, implement leases and cancellation, and make resume saving/publication idempotent. Recovery must not reset iteration budgets; ambiguous interrupted calls must not permit unbounded retries.
+- [x] Integrate LangChain through the configurable LiteLLM adapter. Provide a synthetic smoke command (live execution pending credentials; tracked in milestone 8); validate outputs locally even when provider structured outputs are available.
+- [x] Implement LangGraph stages: schema worker → schema judge → publish/reuse schema → mapping worker → mapping judge → save accepted resume, with explicit revision and review branches.
+- [x] Give each stage its own maximum of five worker–judge iterations, including the first attempt. Stop on acceptance; malformed judge responses consume an iteration. Bound transport retries and timeouts separately.
+- [x] Implement the exact acceptance gate: valid response, matching stage, `accept`, four true checks, confidence at least 0.90, empty issues, and successful application schema/PII validation.
+- [x] Supply source text as data, separate from instructions. Validate and sanitize worker output and judge feedback before persistence or reuse. Grant parsing models no unrelated tools.
+- [x] Publish only approved global schemas. Reuse unchanged definitions, atomically rebase concurrent additions within the remaining iteration budget, and route unresolved conflicts to review.
+- [x] Pin the schema version before mapping and record it on the accepted resume. Leave existing resumes unchanged when a new global version appears.
+- [x] Persist counters and sanitized workflow state, implement leases and cancellation, and make resume saving/publication idempotent. Recovery must not reset iteration budgets; ambiguous interrupted calls must not permit unbounded retries.
 
 Completion: deterministic fake-model tests cover early acceptance, fifth-iteration acceptance, exhaustion in either stage, invalid/contradictory judge output, transport failures, concurrent publication, restart recovery, and duplicate completion. No unapproved candidate becomes an accepted resume or global schema.
 
@@ -260,3 +260,7 @@ For future entries, record: milestone/task, concrete changed paths, checks and r
 | Authentication merged | [PR #2](https://github.com/adityaparab/cvantage/pull/2), `feat/authentication` → `main` | Merge confirmed; next branch created from updated main | Milestone 3 uploads |
 
 | Upload implementation | Memory-only PDF/DOCX/DOC extraction, bounded workers, separate PII, redacted-source confirmation and 30-day expiry | Build, both linters, 14 unit, 10 integration and 2 client tests pass; synthetic fixtures cover all formats | Merge `feat/resume-upload`, then parsing graph. Name/location supplied by user; mandatory source review resolves uncertain local detection. |
+
+| Upload merged | [PR #3](https://github.com/adityaparab/cvantage/pull/3), `feat/resume-upload` → `main` | Merge confirmed | Milestone 4 parsing graph |
+
+| Parsing implementation | LiteLLM adapter, LangGraph worker/judge/decision nodes, durable MongoDB snapshots and leases, cancellation, bounded counters and schema pinning | Server build/lint; 14 unit tests and 18 integration tests pass, including early/fifth acceptance, both-stage exhaustion, malformed judges, transport errors, restart and concurrent claims | Live smoke pending .env; create/merge PR, then user review |

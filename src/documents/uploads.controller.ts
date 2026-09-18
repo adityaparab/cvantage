@@ -178,12 +178,29 @@ export class UploadsController {
       throw new ConflictException('Review changed; reload before confirming');
     return result;
   }
+  @Post('parsing-jobs/:id/cancel')
+  async cancel(@Req() request: AuthRequest, @Param('id') id: string) {
+    const deleted = await this.database.db
+      .collection<ParseJob>('parseJobs')
+      .deleteOne({ _id: id, ownerId: request.session.ownerId });
+    if (!deleted.deletedCount)
+      throw new NotFoundException('Parsing job not found');
+    return { cancelled: true };
+  }
   @Get('parsing-jobs') list(@Req() request: AuthRequest) {
     return this.database.db
       .collection<ParseJob>('parseJobs')
       .find(
         { ownerId: request.session.ownerId, expiresAt: { $gt: new Date() } },
-        { projection: { source: 0, candidate: 0, judge: 0 } },
+        {
+          projection: {
+            source: 0,
+            candidate: 0,
+            judge: 0,
+            leaseToken: 0,
+            leaseUntil: 0,
+          },
+        },
       )
       .sort({ createdAt: -1 })
       .limit(50)

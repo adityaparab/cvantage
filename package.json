@@ -27,6 +27,9 @@
     "test:e2e": "node scripts/test-database.cjs"
   },
   "dependencies": {
+    "@langchain/core": "^1",
+    "@langchain/langgraph": "^1",
+    "@langchain/openai": "^1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4",
     "@nestjs/core": "^11.0.1",

@@ -1,6 +1,6 @@
 # Development and verification
 
-Use Node.js 24+ and Yarn 1. Run `yarn install:all`. The backend currently uses `@nestjs/config` 4.0.4, the native MongoDB driver 7.6.0, Zod 4.6.5 for runtime contracts, and Ajv for a restricted JSON Schema draft-07 dialect. LangChain/LangGraph packages will be selected and integrated in milestone 4, using their installed dependency skill and current TypeScript APIs.
+Use Node.js 24+ and Yarn 1. Run `yarn install:all`. The backend currently uses `@nestjs/config` 4.0.4, the native MongoDB driver 7.6.0, Zod 4.6.5 for runtime contracts, and Ajv for a restricted JSON Schema draft-07 dialect. LangChain core 1.2.11, OpenAI adapter 1.5.13 and LangGraph 1.4.15 provide the LiteLLM workflow.
 
 Copy `.env.example` to `.env`, populate credentials/model identifiers and a random session secret of at least 32 characters. Never commit `.env`. Application startup fails when required configuration or MongoDB is unavailable. Tests supply synthetic environment values.
 
@@ -45,3 +45,11 @@ Client behavior tests: `yarn --cwd client test`.
 Install Poppler (`pdftotext`) and util-linux (`prlimit`) on Linux. DOCX uses Mammoth with bounded ZIP inspection; legacy DOC uses word-extractor. Worker threads isolate parsing with a 20-second timeout, 128 MB JS heap and at most two concurrent extractions. PDF subprocesses have additional CPU/address-space limits. The upload cap is 20,000,000 bytes; multipart buffering stops at one byte above this inclusive limit. Textless/image-only, corrupt or unsupported documents require a new readable upload; OCR is not implemented.
 
 Original bytes remain in memory and are cleared after extraction; originals are never written to disk. The user supplies name/location/contact values, local patterns also redact email and phone numbers, and the user must inspect/correct the redacted text before any model call. This review is essential for names, locations, headers and unusual contact formats that cannot be identified reliably by patterns alone. PII is stored separately. Redacted source and review drafts expire after 30 days and will be deleted upon acceptance. Test fixtures contain synthetic contact details only.
+
+## Durable parsing
+
+A single background scheduler claims jobs with three-minute MongoDB leases. Each graph invocation runs worker → judge → decision for one reserved iteration. MongoDB job snapshots are the recovery checkpoints; there is no second graph-history collection. Counters are persisted before calls, so crashes consume ambiguous attempts and cannot reset budgets. Reclaimed jobs resume from the stored stage. Both stages stop at five attempts. Schema conflicts re-evaluate against the new latest schema within that budget. Acceptance atomically deletes the entire temporary snapshot; TTL and access-time checks enforce 30-day expiry. Cancellation deletes the job and fences further writes.
+
+Model calls use the configured LiteLLM chat-completions endpoint with no tools, no transport retries, a 60-second request timeout and 12,000 output-token cap. Malformed JSON is a failed iteration; provider errors produce a visible failed job for user review. Ambient LangSmith/LangChain tracing and verbose model logs are disabled to prevent exporting resume content. Worker proposals and judge feedback are screened before storage or reuse.
+
+Run `yarn build:server && node scripts/smoke-models.cjs` after configuring `.env` to check both models with synthetic data. This sends four bounded calls and applies the production acceptance contract. Live evaluation has not run in this workspace because credentials/model identifiers are absent. The deterministic MongoDB tests use the real graph with a scripted model adapter; they do not establish live model quality.

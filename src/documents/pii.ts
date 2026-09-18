@@ -16,7 +16,7 @@ function escape(value: string) {
 }
 export function redactPii(text: string, pii: Pii): string {
   let result = text;
-  for (const value of Object.values(pii)
+  for (const value of [pii.name, pii.contactNumber, pii.email, pii.location]
     .filter(Boolean)
     .sort((a, b) => b.length - a.length)) {
     result = result.replace(
@@ -29,6 +29,13 @@ export function redactPii(text: string, pii: Pii): string {
     .replace(phonePattern, '[REDACTED]');
 }
 export function containsPii(value: unknown, pii: Pii): boolean {
-  const text = JSON.stringify(value);
-  return text !== redactPii(text, pii);
+  if (typeof value === 'string') return value !== redactPii(value, pii);
+  if (Array.isArray(value))
+    return value.some((item: unknown) => containsPii(item, pii));
+  if (value && typeof value === 'object')
+    return Object.entries(value).some(
+      ([key, item]: [string, unknown]) =>
+        containsPii(key, pii) || containsPii(item, pii),
+    );
+  return false;
 }

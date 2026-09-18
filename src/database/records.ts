@@ -38,6 +38,7 @@ export interface ParseJob {
   schemaVersion?: number;
   source: string;
   piiConfirmed?: boolean;
+  failureCode?: string;
   candidate?: unknown;
   judge?: JudgeResult;
   revision: number;
