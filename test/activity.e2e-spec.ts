@@ -207,12 +207,12 @@ describe('private streamed workflow activity', () => {
       {
         $set: {
           status: 'schema',
-          schemaIterations: 5,
+          schemaIterations: 1,
           leaseUntil: new Date(0),
           activity: [
             {
               step: 'preparation_worker',
-              attempt: 5,
+              attempt: 1,
               status: 'active',
               retries: 0,
               received: 10,
@@ -229,7 +229,7 @@ describe('private streamed workflow activity', () => {
     expect(activity.steps[0]).toMatchObject({
       status: 'failure',
       outcome: 'interrupted',
-      attempt: 5,
+      attempt: 1,
     });
     expect(generate).not.toHaveBeenCalled();
     await database.db

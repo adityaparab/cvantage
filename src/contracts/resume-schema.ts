@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { z } from 'zod';
 
 export const MAX_UPLOAD_BYTES = 20_000_000;
-export const MAX_STAGE_ITERATIONS = 5;
+export const STAGE_ITERATION_LIMITS = { schema: 1, mapping: 5 } as const;
 export const REVIEW_RETENTION_DAYS = 30;
 export type JsonValue =
   string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };

@@ -42,6 +42,7 @@ export function ActivitySteps({ activity }: { activity: Activity }) {
           const latest = runs.at(-1);
           const state = indicator(activity, key, latest);
           const hidden = key.startsWith('preparation');
+          const attemptLimit = key.startsWith('mapping') ? 5 : 1;
           return (
             <li className={`activity-step ${state}`} key={key}>
               <span className={`step-indicator ${state}`} aria-hidden="true">
@@ -60,9 +61,8 @@ export function ActivitySteps({ activity }: { activity: Activity }) {
                 </div>
                 {latest && (
                   <p className="step-meta">
-                    Attempt {latest.attempt} of{' '}
-                    {activity.kind === 'parsing' ? 5 : 1} · Transport retries{' '}
-                    {latest.retries} of 2
+                    Attempt {latest.attempt} of {attemptLimit} · Transport
+                    retries {latest.retries} of 2
                     {latest.status === 'active' ? ' · Receiving output…' : ''}
                   </p>
                 )}
@@ -96,7 +96,7 @@ export function ActivitySteps({ activity }: { activity: Activity }) {
                 {latest?.outcome === 'revision_requested' && (
                   <p className="hint">
                     Revision requested
-                    {latest.attempt < 5
+                    {latest.attempt < attemptLimit
                       ? ' · another loop attempt will run.'
                       : ' · attempt limit reached.'}
                   </p>
@@ -255,7 +255,7 @@ export default function WorkflowActivity({
             activity.piiConfirmed &&
             activity.status !== 'completed' && (
               <p className="muted">
-                Preparation loop {activity.preparationAttempts ?? 0}/5 ·
+                Preparation pass {activity.preparationAttempts ?? 0}/1 ·
                 Extraction loop {activity.mappingAttempts ?? 0}/5. Each model
                 call can retry a temporary connection failure twice.
               </p>

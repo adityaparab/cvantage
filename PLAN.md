@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** seeded-schema extraction is implemented and verified, alongside resume review, appearance and streamed workflow activity. Schemas stay internal; parsed resumes require user approval.
-**Next action:** live provider quality evaluation and Railway deployment remain separate pending work. Milestone 13 is implemented and verified; [PR #14](https://github.com/adityaparab/cvantage/pull/14) records its merge status.
+**Current state:** milestone 14 is implemented and verified: schema modification has one worker–judge pass; mapping retains its five-attempt loop. Schemas stay internal; parsed resumes require user approval.
+**Next action:** merge `feat/single-pass-schema`. Live provider quality evaluation and Railway deployment remain separate pending work.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -27,6 +27,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 11. Light/dark/system appearance | Complete | 2 | Build/client lint; 7 client tests; Chromium system changes/reload persistence; light/dark screenshots inspected |
 | 12. Streamed workflow activity and notifications | Complete | 10–11 | Full build/both linters; 35 unit, 30 integration, 9 client tests; Chromium streaming/retry/loop/reload/notification/approval/export journey |
 | 13. Seeded additive resume schema | Complete | 4, 10, 12 | Full build/both linters; 40 unit, 36 integration, 10 client tests; Chromium extraction/edit/tailor/export using the supplied layout |
+| 14. Single-pass schema modification | Complete | 13 | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and five mapping attempts |
 
 ### How to maintain progress
 
@@ -169,14 +170,14 @@ Dependencies: milestones 1–3. Apply the retention policy below to durable sour
 
 - [x] Integrate LangChain through the configurable LiteLLM adapter. Provide a synthetic smoke command (live execution pending credentials; tracked in milestone 8); validate outputs locally even when provider structured outputs are available.
 - [x] Implement LangGraph stages: schema worker → schema judge → publish/reuse schema → mapping worker → mapping judge → save accepted resume, with explicit revision and review branches.
-- [x] Give each stage its own maximum of five worker–judge iterations, including the first attempt. Stop on acceptance; malformed judge responses consume an iteration. Bound transport retries and timeouts separately.
+- [x] Limit schema modification to one worker–judge pass and mapping to five iterations, including the first attempt (updated in milestone 14). Stop on acceptance; malformed judge responses consume an iteration. Bound transport retries and timeouts separately.
 - [x] Implement the exact acceptance gate: valid response, matching stage, `accept`, four true checks, confidence at least 0.90, empty issues, and successful application schema/PII validation.
 - [x] Supply source text as data, separate from instructions. Validate and sanitize worker output and judge feedback before persistence or reuse. Grant parsing models no unrelated tools.
-- [x] Publish only approved global schemas. Reuse unchanged definitions, atomically rebase concurrent additions within the remaining iteration budget, and report unresolved schema conflicts as processing failures (updated in milestone 10).
+- [x] Publish only approved global schemas. Reuse unchanged definitions, publish atomically, and report schema publication conflicts as processing failures without a second pass (updated in milestone 14).
 - [x] Pin the schema version before mapping and record it on the accepted resume. Leave existing resumes unchanged when a new global version appears.
 - [x] Persist counters and sanitized workflow state, implement leases and cancellation, and make resume saving/publication idempotent. Recovery must not reset iteration budgets; ambiguous interrupted calls must not permit unbounded retries.
 
-Completion: deterministic fake-model tests cover early acceptance, fifth-iteration acceptance, exhaustion in either stage, invalid/contradictory judge output, transport failures, concurrent publication, restart recovery, and duplicate completion. No unapproved candidate becomes an accepted resume or global schema.
+Completion: deterministic fake-model tests cover early acceptance, fifth-iteration mapping acceptance, exhaustion in either stage, invalid/contradictory judge output, transport failures, concurrent publication, restart recovery, and duplicate completion. No unapproved candidate becomes an accepted resume or global schema.
 
 ### 5. User review and schema-driven editing
 
@@ -249,7 +250,7 @@ Completion: MongoDB remains healthy on the local Docker kernel, transactions pas
 
 ### 12. Streamed workflow activity and notifications
 
-- [x] Stream actual model answer chunks with a separate two-retry transport budget; preserve five-attempt parsing limits.
+- [x] Stream actual model answer chunks with a separate two-retry transport budget; preserve stage budgets (schema: one pass, mapping: five attempts, updated in milestone 14).
 - [x] Persist safe step progress, attempts and retry counts; hide all schema output and redact completed JSON string values before previewing.
 - [x] Add owner-scoped snapshots/SSE, session revocation, reconnects, cancellation fencing, interrupted-attempt recovery and retention cleanup.
 - [x] Navigate uploads and tailoring to dedicated activity URLs; show each step's inactive/active/success/failure state and review actions.
@@ -263,11 +264,20 @@ Completion: activity survives page reloads without rerunning models; accepted pa
 - [x] Preserve `schema/schema.json` unchanged and seed its exact definition in an empty database before the first server starts accepting requests.
 - [x] Make repeated/concurrent startup idempotent; retain approved additions and immutably include missing baseline fields in existing registries without migrating saved resumes.
 - [x] Replace full-schema generation with bounded addition proposals that require exact source evidence; reject replacements, removals, constraint changes, unsupported fields and PII.
-- [x] Reuse existing versions for empty additions; retain worker/judge gates, schema publication concurrency and five-attempt budgets.
+- [x] Reuse existing versions for empty additions; retain worker/judge gates and schema publication concurrency. Milestone 14 changes the schema budget to one pass; mapping keeps five attempts.
 - [x] Support baseline references/formats and its `basics.summary`, `work`, and categorized skill layout across extraction, review, editing, tailoring and export; keep actual contact values separate.
 - [x] Verify 40 unit, 36 database/HTTP integration and 10 client tests, full build/both linters, and the Chromium upload-to-export journey. Verify no version churn for a resume already covered by the baseline.
 
 Completion: a fresh startup seeds the supplied file; resumes can add only approved missing fields. Historical versions and corrections remain intact. Incompatible existing field types fail initialization safely instead of being overwritten. Application services remain stopped after isolated verification.
+
+### 14. Single-pass schema modification
+
+- [x] Limit schema preparation to one worker proposal and one judge check; keep source evidence, structural/PII checks and additive-only publication.
+- [x] Stop on rejection, invalid output, publication conflict or interrupted schema work without replaying calls; preserve the five-attempt mapping loop.
+- [x] Show one preparation pass in workflow activity and avoid promising another schema attempt.
+- [x] Verify schema failure/recovery/concurrency and mapping-budget regressions; update product/setup documentation. Full build/both linters, 40 unit, 41 integration and 11 client tests pass; Chromium confirms the one-pass display and complete upload-to-export flow.
+
+Completion: no schema correction loop or replay after interruptions/conflicts. Mapping keeps its existing budget and user approval. Merge the dedicated feature PR before further implementation.
 
 ## Verification commands
 
@@ -323,5 +333,6 @@ yarn test:models
 | Appearance selection | Light, Dark, and System (default); saved preference, live OS changes, pre-paint initialization and shared color tokens | Build/client lint; 7 client tests; Chromium workflow plus appearance/reload checks; both palettes inspected | [PR #12](https://github.com/adityaparab/cvantage/pull/12) merged; streamed workflow activity next |
 | Streamed workflow activity | `src/activity`, streaming LiteLLM adapter, protected progress persistence, activity routes, upload/tailoring redirects and notification dropdown | Full build/both linters; 35 unit, 30 integration, 9 client tests; full Chromium journey with 15 redacted requests, retry/loop/reload checks and inspected mobile/dark dropdown | [PR #13](https://github.com/adityaparab/cvantage/pull/13), `feat/workflow-activity`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Seeded schema extraction | Supplied `schema/schema.json`, startup seed transaction, additive/evidence-based worker contract, baseline validation/editor/export support and historical compatibility | Full build/both linters; 40 unit, 36 integration, 10 client tests; complete Chromium journey and unchanged-schema version reuse | [PR #14](https://github.com/adityaparab/cvantage/pull/14), `feat/seeded-resume-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
+| Single-pass schema modification | Stage-specific limits, terminal schema rejection/conflicts, restart protection and corrected activity labels | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and full resume journey | Merge `feat/single-pass-schema`; live provider evaluation and Railway remain separate |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

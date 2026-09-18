@@ -294,6 +294,16 @@ async function main() {
     assert.equal(mappingJudgments, 5);
     assert(retried);
     await page
+      .getByText(/Preparation pass 1\/1 · Extraction loop 5\/5/)
+      .waitFor();
+    assert.equal(
+      await page
+        .getByText('Attempt 1 of 1 · Transport retries 0 of 2', { exact: true })
+        .count(),
+      2,
+      'Preparation worker and judge each run once',
+    );
+    await page
       .getByText('Attempt 5 of 5 · Transport retries 0 of 2', { exact: true })
       .first()
       .waitFor();
@@ -304,6 +314,8 @@ async function main() {
       origin + '/api/workflows/' + parsingUrl.split('/').at(-1),
     );
     const activity = await activityResponse.json();
+    assert.equal(activity.preparationAttempts, 1);
+    assert.equal(activity.mappingAttempts, 5);
     assert(
       activity.steps
         .filter((step) => step.step.startsWith('preparation'))
