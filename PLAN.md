@@ -9,7 +9,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 ## Status and next action
 
 **Current state:** implementing the updated resume review and workflow experience. Schema processing becomes internal; parsed resumes always require user approval. Local infrastructure remains verified.
-**Next action:** theme selection (11), then streamed activity and workflow notifications (12), each on its own feature branch. Live provider quality evaluation and Railway deployment remain separate pending work.
+**Next action:** streamed activity and workflow notifications (12), each on its own feature branch. Live provider quality evaluation and Railway deployment remain separate pending work.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 8. End-to-end readiness and documentation | Offline checks complete; live evaluation pending | 1–7 | Build/lint; 18 unit, 23 integration, 4 client tests; full Chromium journey and desktop/mobile visual checks |
 | 9. Separate local MongoDB deployment | Complete | 1, startup diagnostics | Compose validation; fresh/repeated startup; 26 integration tests; transaction persistence across recreation; actual app API/UI HTTP 200 |
 | 10. Internal schemas and parsed-resume approval | Complete | 4–5 | Build/lint; 29 unit, 26 integration, 5 client tests; full Chromium journey |
-| 11. Light/dark/system appearance | Planned | 2 | Persisted selection, OS changes, accessible themed UI |
+| 11. Light/dark/system appearance | Complete | 2 | Build/client lint; 7 client tests; Chromium system changes/reload persistence; light/dark screenshots inspected |
 | 12. Streamed workflow activity and notifications | Planned | 10–11 | Dedicated activity routes, model streaming, visible loops/retries, upload redirect, aligned active-workflow dropdown |
 
 ### How to maintain progress
@@ -285,6 +285,7 @@ yarn test:models
 | Startup diagnostics | `src/main.ts`, configuration and database initialization now report safe actionable errors; reject standalone topology before writes; document persistent local replica-set setup | Server build/lint; 29 unit and 26 integration tests; real compiled process exits cleanly against standalone MongoDB and serves API/UI HTTP 200 against an isolated replica set | [PR #9](https://github.com/adityaparab/cvantage/pull/9), `feat/startup-diagnostics`, records the change and merge status. Local `.env` and existing MongoDB remain unchanged pending the user's database setup choice. |
 | Local MongoDB deployment | `deploy/local/`, deployment boundary docs, `db:*` scripts, and matching `.env.example`; local Docker kernel compatibility setting | Compose validates; fresh and repeated starts healthy; 26 integration tests pass against MongoDB 8.0.32; committed marker survives container recreation; actual app API/UI HTTP 200 | [PR #10](https://github.com/adityaparab/cvantage/pull/10), `feat/local-mongodb-compose`, records the change and merge status. Current `.env` already matches the new instance and was preserved. Existing MongoDB on 27017 remains untouched. Railway is deferred. |
 | Internal schema processing and resume approval | Removed schema editor/manual publication path; hid schema proposals and judge output; always pause mapped results for user approval/rejection | Build, both linters, 29 unit, 26 integration and 5 client tests; Chromium upload-to-download journey passes | [PR #11](https://github.com/adityaparab/cvantage/pull/11), `feat/background-schema-review`; next: appearance selection |
+| Appearance selection | Light, Dark, and System (default); saved preference, live OS changes, pre-paint initialization and shared color tokens | Build/client lint; 7 client tests; Chromium workflow plus appearance/reload checks; both palettes inspected | Merge [PR #12](https://github.com/adityaparab/cvantage/pull/12) from `feat/theme-selection`, then streamed workflow activity |
 
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

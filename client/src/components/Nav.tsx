@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import ThemeSelect from './ThemeSelect'
 
 export default function Nav() {
   return (
@@ -12,6 +13,7 @@ export default function Nav() {
     >
       <Link to="/">Home</Link>
       <Link to="/about">About</Link>
+      <ThemeSelect />
     </nav>
   )
 }

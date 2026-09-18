@@ -1,71 +1,72 @@
-import ResumeEditor from './components/ResumeEditor'
-import UploadResume from './components/UploadResume'
-import { useCallback, useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
-import { api, ApiError, setCsrfToken } from './lib/api'
-import './App.css'
+import ResumeEditor from './components/ResumeEditor';
+import UploadResume from './components/UploadResume';
+import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
+import { api, ApiError, setCsrfToken } from './lib/api';
+import './App.css';
+import ThemeSelect from './components/ThemeSelect';
 interface User {
-  id: string
-  email: string
-  csrfToken: string
+  id: string;
+  email: string;
+  csrfToken: string;
 }
 interface Resume {
-  _id: string
-  schemaVersion: number
-  updatedAt: string
+  _id: string;
+  schemaVersion: number;
+  updatedAt: string;
 }
 export default function App() {
-  const [user, setUser] = useState<User | null>(null)
-  const [ready, setReady] = useState(false)
-  const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [selected, setSelected] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null);
+  const [ready, setReady] = useState(false);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [selected, setSelected] = useState<string | null>(null);
   const refreshResumes = useCallback(() => {
     api<Resume[]>('/resumes')
       .then(setResumes)
-      .catch(() => setError('Could not refresh resumes.'))
-  }, [])
-  const [resumes, setResumes] = useState<Resume[]>([])
+      .catch(() => setError('Could not refresh resumes.'));
+  }, []);
+  const [resumes, setResumes] = useState<Resume[]>([]);
   useEffect(() => {
-    let active = true
+    let active = true;
     api<User>('/auth/me')
       .then((value) => {
         if (active) {
-          setUser(value)
-          setCsrfToken(value.csrfToken)
+          setUser(value);
+          setCsrfToken(value.csrfToken);
         }
       })
       .catch((reason: unknown) => {
         if (active && (!(reason instanceof ApiError) || reason.status !== 401))
-          setError('Could not reach the server. Refresh to retry.')
+          setError('Could not reach the server. Refresh to retry.');
       })
       .finally(() => {
-        if (active) setReady(true)
-      })
+        if (active) setReady(true);
+      });
     return () => {
-      active = false
-    }
-  }, [])
+      active = false;
+    };
+  }, []);
   useEffect(() => {
-    if (!user) return
-    let active = true
+    if (!user) return;
+    let active = true;
     api<Resume[]>('/resumes')
       .then((value) => {
-        if (active) setResumes(value)
+        if (active) setResumes(value);
       })
       .catch(() => {
-        if (active) setError('Could not load resumes. Refresh to retry.')
-      })
+        if (active) setError('Could not load resumes. Refresh to retry.');
+      });
     return () => {
-      active = false
-    }
-  }, [user])
+      active = false;
+    };
+  }, [user]);
   async function authenticate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
-    const data = new FormData(event.currentTarget)
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    const data = new FormData(event.currentTarget);
     try {
       const value = await api<User>(`/auth/${mode}`, {
         method: 'POST',
@@ -73,28 +74,28 @@ export default function App() {
           email: data.get('email'),
           password: data.get('password'),
         }),
-      })
-      setCsrfToken(value.csrfToken)
-      setUser(value)
+      });
+      setCsrfToken(value.csrfToken);
+      setUser(value);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to sign in')
+      setError(reason instanceof Error ? reason.message : 'Unable to sign in');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   async function logout() {
-    setBusy(true)
-    setError('')
+    setBusy(true);
+    setError('');
     try {
-      await api('/auth/logout', { method: 'POST', body: '{}' })
-      setUser(null)
-      setResumes([])
-      setSelected(null)
-      setCsrfToken('')
+      await api('/auth/logout', { method: 'POST', body: '{}' });
+      setUser(null);
+      setResumes([]);
+      setSelected(null);
+      setCsrfToken('');
     } catch {
-      setError('Could not sign out. Please try again.')
+      setError('Could not sign out. Please try again.');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
   return (
@@ -103,15 +104,18 @@ export default function App() {
         <a href="/" className="brand">
           CVantage<span>Make your experience count.</span>
         </a>
-        {user && (
-          <button
-            className="secondary"
-            disabled={busy}
-            onClick={() => void logout()}
-          >
-            Sign out
-          </button>
-        )}
+        <div className="header-actions">
+          <ThemeSelect />
+          {user && (
+            <button
+              className="secondary"
+              disabled={busy}
+              onClick={() => void logout()}
+            >
+              Sign out
+            </button>
+          )}
+        </div>
       </header>
       <main>
         {!ready ? (
@@ -126,8 +130,8 @@ export default function App() {
                 key={selected}
                 id={selected}
                 onClose={() => {
-                  setSelected(null)
-                  refreshResumes()
+                  setSelected(null);
+                  refreshResumes();
                 }}
               />
             ) : (
@@ -213,8 +217,8 @@ export default function App() {
                 type="button"
                 className="text-button"
                 onClick={() => {
-                  setMode(mode === 'login' ? 'register' : 'login')
-                  setError('')
+                  setMode(mode === 'login' ? 'register' : 'login');
+                  setError('');
                 }}
               >
                 {mode === 'login'
@@ -232,5 +236,5 @@ export default function App() {
       </main>
       <footer>CVantage · Thoughtful applications begin with you.</footer>
     </div>
-  )
+  );
 }
