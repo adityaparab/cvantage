@@ -1,3 +1,4 @@
+import { resolveField } from '../contracts/resume-schema';
 import type {
   FieldSchema,
   ResumeData,
@@ -29,6 +30,7 @@ export function presentResume(
     title: string,
     depth: number,
   ) {
+    field = resolveField(schema, field);
     if (
       value === undefined ||
       value === null ||

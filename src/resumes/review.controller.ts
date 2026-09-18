@@ -1,3 +1,4 @@
+import { editorSchema } from '../contracts/resume-schema';
 import {
   Body,
   Controller,
@@ -37,6 +38,6 @@ export class ReviewController {
   ) {
     const schema = await this.schemas.get(Number(version));
     if (!schema) throw new NotFoundException('Schema not found');
-    return schema;
+    return { ...schema, definition: editorSchema(schema.definition) };
   }
 }

@@ -23,6 +23,7 @@ function databaseWithHello(hello: Record<string, unknown>) {
   jest.spyOn(database.db, 'admin').mockReturnValue(admin);
   jest.spyOn(admin, 'command').mockResolvedValue(hello);
   const indexes = jest.spyOn(database, 'createIndexes').mockResolvedValue();
+  jest.spyOn(database, 'seedSchema').mockResolvedValue();
   return { database, close, indexes };
 }
 

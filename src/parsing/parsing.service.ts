@@ -1,3 +1,4 @@
+import { applySchemaAdditions } from '../contracts/schema-additions';
 import { trackedGenerate } from '../activity/model-progress';
 import type { StepRun } from '../activity/activity.types';
 import {
@@ -16,15 +17,12 @@ import { SchemaRepository } from '../database/schema.repository';
 import { ResumeRepository } from '../database/resume.repository';
 import type { ParseJob, PiiRecord } from '../database/records';
 import {
-  BASE_RESUME_SCHEMA,
   MAX_STAGE_ITERATIONS,
-  parseResumeSchema,
-  preservesFields,
   validateResumeData,
 } from '../contracts/resume-schema';
 import type { ResumeSchema } from '../contracts/resume-schema';
 import { acceptsJudge, judgeSchema } from '../contracts/workflow';
-import { containsPii } from '../documents/pii';
+import { containsPii, redactPii } from '../documents/pii';
 import { JUDGE_PROMPT, MAPPING_PROMPT, SCHEMA_PROMPT } from '../ai/prompts';
 
 const State = Annotation.Root({
@@ -150,7 +148,12 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
       job.stage === 'schema'
         ? await this.schemas.latest()
         : await this.schemas.get(job.schemaVersion ?? 0);
-    const schema = current?.definition ?? BASE_RESUME_SCHEMA;
+    if (!current) throw new Error('SEEDED_SCHEMA_UNAVAILABLE');
+    const schema = current.definition;
+    const safeSchema = JSON.parse(
+      redactPii(JSON.stringify(schema), pii),
+    ) as unknown;
+    const feedback = job.judge ?? job.failureCode ?? null;
     await this.patch(job, {
       activity,
       [counter]: job[counter] + 1,
@@ -161,22 +164,29 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
     // never replayed; this snapshot is the durable recovery boundary for the graph.
     const graph = new StateGraph(State)
       .addNode('worker', async () => {
-        const candidate = await this.generate(
+        const output = await this.generate(
           job,
           pii,
           'worker',
           job.stage === 'schema' ? SCHEMA_PROMPT : MAPPING_PROMPT,
           {
             source: job.source,
-            latestSchema: schema,
-            schema,
-            feedback: job.judge ?? job.failureCode ?? null,
+            latestSchema: safeSchema,
+            schema: safeSchema,
+            feedback,
           },
         );
-        if (containsPii(candidate, pii))
+        let candidate: unknown = output;
+        if (job.stage === 'schema') {
+          try {
+            candidate = applySchemaAdditions(schema, output, job.source, pii);
+          } catch {
+            return { candidate: null, valid: false };
+          }
+        } else if (containsPii(candidate, pii))
           return { candidate: null, valid: false };
         const valid = this.validCandidate(job, candidate, schema);
-        await this.patch(job, { candidate });
+        if (job.stage === 'mapping') await this.patch(job, { candidate });
         return { candidate, valid };
       })
       .addNode('evaluate', async (state) => {
@@ -184,9 +194,14 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
         const judge = await this.generate(job, pii, 'judge', JUDGE_PROMPT, {
           stage: job.stage,
           source: job.source,
-          schema,
-          latestSchema: schema,
-          candidate: state.candidate,
+          schema: safeSchema,
+          latestSchema: safeSchema,
+          candidate:
+            job.stage === 'schema'
+              ? (JSON.parse(
+                  redactPii(JSON.stringify(state.candidate), pii),
+                ) as unknown)
+              : state.candidate,
         });
         const parsed = judgeSchema.safeParse(judge);
         if (!parsed.success || containsPii(judge, pii)) return { judge: null };
@@ -218,7 +233,10 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
             failureCode: state.valid
               ? 'JUDGE_REVISION_REQUIRED'
               : 'INVALID_OR_PERSONAL_OUTPUT',
-            candidate: state.candidate ?? undefined,
+            candidate:
+              job.stage === 'mapping'
+                ? (state.candidate ?? undefined)
+                : undefined,
             judge: judgeSchema.safeParse(state.judge).data,
           });
         }
@@ -269,7 +287,7 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
   ): boolean {
     try {
       return job.stage === 'schema'
-        ? preservesFields(schema, parseResumeSchema(candidate))
+        ? candidate !== null
         : validateResumeData(schema, candidate);
     } catch {
       return false;
@@ -281,7 +299,8 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
     baseVersion: number,
     pii: PiiRecord,
   ) {
-    if (containsPii(candidate, pii)) throw new Error('PII_BOUNDARY');
+    if (job.stage === 'mapping' && containsPii(candidate, pii))
+      throw new Error('PII_BOUNDARY');
     if (job.stage === 'schema') {
       try {
         const schema = await this.schemas.publish(candidate, baseVersion);

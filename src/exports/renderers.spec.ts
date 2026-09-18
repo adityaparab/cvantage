@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { extractRawText } from 'mammoth';
-import { BASE_RESUME_SCHEMA } from '../contracts/resume-schema';
+import { LEGACY_RESUME_SCHEMA as BASE_RESUME_SCHEMA } from '../../test/fixtures/legacy-schema';
 import { presentResume } from './presentation';
 import { renderDocx, renderPdf } from './renderers';
 const font = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';

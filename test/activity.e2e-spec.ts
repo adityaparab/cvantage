@@ -1,3 +1,4 @@
+import { seedBaseSchema } from '../src/database/schema-storage';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -16,9 +17,8 @@ import { TailoringService } from '../src/tailoring/tailoring.service';
 import { SchemaRepository } from '../src/database/schema.repository';
 import { BASE_RESUME_SCHEMA } from '../src/contracts/resume-schema';
 const data = {
-  basics: {},
-  professionalSummary: 'Software engineer',
-  workExperience: [],
+  basics: { summary: 'Software engineer' },
+  work: [],
   skills: [],
 };
 const assessment = {
@@ -65,7 +65,10 @@ describe('private streamed workflow activity', () => {
       await database.db.collection(name).deleteMany({});
     await database.db
       .collection<{ _id: string }>('schemaRegistry')
-      .updateOne({ _id: 'global' }, { $set: { version: 0 } });
+      .updateOne(
+        { _id: 'global' },
+        { $set: { version: 0 }, $unset: { seedHash: '' } },
+      );
   }
   afterAll(async () => {
     await clear();
@@ -73,6 +76,7 @@ describe('private streamed workflow activity', () => {
   });
   beforeEach(async () => {
     await clear();
+    await seedBaseSchema(database.client, database.db);
     generate.mockReset();
   });
   async function seed(ownerId = randomUUID()): Promise<ParseJob> {

@@ -1,3 +1,4 @@
+import { seedBaseSchema } from '../src/database/schema-storage';
 import { ExportsService } from '../src/exports/exports.service';
 import { TailoringService } from '../src/tailoring/tailoring.service';
 import { EditingService } from '../src/resumes/editing.service';
@@ -17,10 +18,9 @@ import type {
 } from '../src/database/records';
 import type { Stage } from '../src/contracts/workflow';
 const data = {
-  basics: {},
-  professionalSummary: 'Software engineer',
-  workExperience: [],
-  skills: [{ category: 'Languages', items: ['TypeScript'] }],
+  basics: { summary: 'Software engineer' },
+  work: [],
+  skills: [{ name: 'Languages', keywords: ['TypeScript'] }],
 };
 const judge = (stage: Stage, accept = true) => ({
   stage,
@@ -72,10 +72,14 @@ describe('durable worker/judge parsing', () => {
       await db.db.collection(name).deleteMany({});
     await db.db
       .collection<{ _id: string }>('schemaRegistry')
-      .updateOne({ _id: 'global' }, { $set: { version: 0 } });
+      .updateOne(
+        { _id: 'global' },
+        { $set: { version: 0 }, $unset: { seedHash: '' } },
+      );
   }
   beforeEach(async () => {
     await clear();
+    await seedBaseSchema(db.client, db.db);
     generate.mockReset();
   });
   afterAll(async () => {
@@ -117,7 +121,7 @@ describe('durable worker/judge parsing', () => {
   it('requires user approval after judge acceptance, then removes temporary state', async () => {
     const job = await seed();
     generate
-      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce({ additions: [] })
       .mockResolvedValueOnce(judge('schema'))
       .mockResolvedValueOnce(data)
       .mockResolvedValueOnce(judge('mapping'));
@@ -162,13 +166,13 @@ describe('durable worker/judge parsing', () => {
       const job = await seed();
       if (stage === 'mapping') {
         generate
-          .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+          .mockResolvedValueOnce({ additions: [] })
           .mockResolvedValueOnce(judge('schema'));
         await parsing.runNext();
       }
       for (let i = 0; i < 5; i++) {
         generate
-          .mockResolvedValueOnce(stage === 'schema' ? BASE_RESUME_SCHEMA : data)
+          .mockResolvedValueOnce(stage === 'schema' ? { additions: [] } : data)
           .mockResolvedValueOnce(judge(stage, false));
         await parsing.runNext();
       }
@@ -185,7 +189,7 @@ describe('durable worker/judge parsing', () => {
   it('accepts on fifth iteration without granting a new budget', async () => {
     const job = await seed({ schemaIterations: 4 });
     generate
-      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce({ additions: [] })
       .mockResolvedValueOnce(judge('schema'));
     await parsing.runNext();
     expect(await getJob(job)).toMatchObject({
@@ -197,11 +201,11 @@ describe('durable worker/judge parsing', () => {
   it('consumes malformed/contradictory judge iterations and removes PII outputs', async () => {
     const job = await seed();
     generate
-      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce({ additions: [] })
       .mockResolvedValueOnce({ ...judge('schema'), confidence: 0.5 });
     await parsing.runNext();
     generate
-      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce({ additions: [] })
       .mockResolvedValueOnce({ verdict: 'accept' });
     await parsing.runNext();
     generate.mockResolvedValueOnce({
@@ -216,7 +220,66 @@ describe('durable worker/judge parsing', () => {
     expect(JSON.stringify(await getJob(job))).not.toContain(
       'Synthetic Applicant',
     );
-    expect(await db.db.collection('schemaVersions').countDocuments()).toBe(0);
+    expect(await db.db.collection('schemaVersions').countDocuments()).toBe(1);
+  });
+  it('publishes only source-grounded additions and maps against the extended baseline', async () => {
+    const job = await seed({
+      source: 'Software engineer. Managed a team of 6.',
+    });
+    generate
+      .mockResolvedValueOnce({
+        additions: [
+          {
+            parentPath: '/properties/work/items',
+            name: 'teamSize',
+            definition: { type: 'number' },
+            evidence: 'Managed a team of 6',
+          },
+        ],
+      })
+      .mockResolvedValueOnce(judge('schema'));
+    await parsing.runNext();
+    const latest = (await app.get(SchemaRepository).latest())!;
+    expect(latest.version).toBe(2);
+    expect(
+      latest.definition.properties!.work.items!.properties!.teamSize,
+    ).toEqual({ type: 'number' });
+    expect((await app.get(SchemaRepository).get(1))!.definition).toEqual(
+      BASE_RESUME_SCHEMA,
+    );
+    expect(latest.definition).not.toHaveProperty('evidence');
+    generate
+      .mockResolvedValueOnce({ ...data, work: [{ teamSize: 6 }] })
+      .mockResolvedValueOnce(judge('mapping'));
+    await parsing.runNext();
+    expect(await getJob(job)).toMatchObject({
+      schemaVersion: 2,
+      status: 'review_required',
+    });
+    expect(generate.mock.calls.at(-2)?.[2]).toMatchObject({
+      schema: {
+        properties: {
+          work: { items: { properties: { teamSize: { type: 'number' } } } },
+        },
+      },
+    });
+  });
+  it('cannot publish an unsupported addition even if a model tries to replace the schema', async () => {
+    const job = await seed();
+    generate.mockResolvedValueOnce({
+      additions: [
+        {
+          parentPath: '',
+          name: 'patents',
+          definition: { type: 'string' },
+          evidence: 'Owns patents',
+        },
+      ],
+    });
+    await parsing.runNext();
+    expect((await getJob(job))?.status).toBe('queued');
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect((await app.get(SchemaRepository).latest())?.version).toBe(1);
   });
   it('surfaces transport failure without automatic retries', async () => {
     const job = await seed();
@@ -266,7 +329,7 @@ describe('durable worker/judge parsing', () => {
     expect(release).toBeDefined();
     expect(await parsing.runNext()).toBe(false);
     await db.db.collection<ParseJob>('parseJobs').deleteOne({ _id: job._id });
-    release(BASE_RESUME_SCHEMA);
+    release({ additions: [] });
     await work;
     expect(await getJob(job)).toBeNull();
     expect(await db.db.collection('resumes').countDocuments()).toBe(0);
@@ -292,12 +355,12 @@ describe('durable worker/judge parsing', () => {
         approve: true,
       }),
     ).rejects.toThrow();
-    expect(await db.db.collection('schemaVersions').countDocuments()).toBe(0);
+    expect(await db.db.collection('schemaVersions').countDocuments()).toBe(1);
     expect((await getJob(job))?.stage).toBe('schema');
   });
   it('mapping approval enforces privacy, records user decision, and old-schema edits preserve corrections', async () => {
     const schemas = app.get(SchemaRepository);
-    const schema = await schemas.publish(BASE_RESUME_SCHEMA, 0);
+    const schema = (await schemas.latest())!;
     const job = await seed({
       stage: 'mapping',
       schemaVersion: schema.version,
@@ -317,7 +380,7 @@ describe('durable worker/judge parsing', () => {
     await expect(
       edit.approve(job.ownerId, job._id, {
         ...approval,
-        candidate: { ...data, professionalSummary: 'Synthetic Applicant' },
+        candidate: { ...data, basics: { summary: 'Synthetic Applicant' } },
       }),
     ).rejects.toThrow();
     await edit.approve(job.ownerId, job._id, approval);
@@ -327,12 +390,12 @@ describe('durable worker/judge parsing', () => {
         ...BASE_RESUME_SCHEMA,
         properties: {
           ...BASE_RESUME_SCHEMA.properties,
-          education: { type: 'string' },
+          clearances: { type: 'string' },
         },
       },
       1,
     );
-    const changed = { ...data, professionalSummary: 'Corrected by user' };
+    const changed = { ...data, basics: { summary: 'Corrected by user' } };
     const record = await edit.update(job.ownerId, job.resumeId, {
       revision: 0,
       data: changed,
@@ -371,7 +434,7 @@ describe('durable worker/judge parsing', () => {
   it('tailors the corrected snapshot, keeps PII out of calls and requires independent variant approval', async () => {
     const job = await seed();
     generate
-      .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+      .mockResolvedValueOnce({ additions: [] })
       .mockResolvedValueOnce(judge('schema'))
       .mockResolvedValueOnce(data)
       .mockResolvedValueOnce(judge('mapping'));
@@ -386,7 +449,7 @@ describe('durable worker/judge parsing', () => {
     });
     const changed = {
       ...data,
-      professionalSummary: 'User corrected software developer',
+      basics: { summary: 'User corrected software developer' },
     };
     await edit.update(job.ownerId, job.resumeId, {
       revision: 0,
@@ -395,7 +458,7 @@ describe('durable worker/judge parsing', () => {
     const tailoring = app.get(TailoringService);
     const tailored = {
       ...changed,
-      professionalSummary: 'Software developer focused on tools',
+      basics: { summary: 'Software developer focused on tools' },
     };
     generate
       .mockResolvedValueOnce(tailored)
@@ -461,7 +524,7 @@ describe('durable worker/judge parsing', () => {
     ).rejects.toThrow();
     generate.mockResolvedValueOnce({
       ...changed,
-      skills: [{ category: 'Languages', items: ['Invented Skill'] }],
+      skills: [{ name: 'Languages', keywords: ['Invented Skill'] }],
     });
     await expect(
       tailoring.create(job.ownerId, job.resumeId, {
@@ -480,13 +543,13 @@ describe('durable worker/judge parsing', () => {
         ...BASE_RESUME_SCHEMA,
         properties: {
           ...BASE_RESUME_SCHEMA.properties,
-          education: { type: 'string' as const },
+          clearances: { type: 'string' as const },
         },
       };
       generate
-        .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
+        .mockResolvedValueOnce({ additions: [] })
         .mockImplementationOnce(async () => {
-          await app.get(SchemaRepository).publish(concurrent, 0);
+          await app.get(SchemaRepository).publish(concurrent, 1);
           return judge('schema');
         });
       await parsing.runNext();
@@ -497,19 +560,19 @@ describe('durable worker/judge parsing', () => {
       });
       if (previousAttempts === 0) {
         generate
-          .mockResolvedValueOnce(concurrent)
+          .mockResolvedValueOnce({ additions: [] })
           .mockResolvedValueOnce(judge('schema'));
         await parsing.runNext();
         expect(await getJob(job)).toMatchObject({
           schemaIterations: 2,
           stage: 'mapping',
-          schemaVersion: 1,
+          schemaVersion: 2,
         });
         expect(generate.mock.calls.at(-2)?.[2]).toMatchObject({
-          latestSchema: concurrent,
+          latestSchema: { properties: { clearances: { type: 'string' } } },
         });
       } else expect(await parsing.runNext()).toBe(false);
-      expect(await db.db.collection('schemaVersions').countDocuments()).toBe(1);
+      expect(await db.db.collection('schemaVersions').countDocuments()).toBe(2);
     },
   );
 });

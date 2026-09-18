@@ -8,7 +8,7 @@ export function preservesFacts(
 ): boolean {
   function compare(before: JsonValue, after: JsonValue, key = ''): boolean {
     if (
-      key === 'professionalSummary' &&
+      (key === '/professionalSummary' || key === '/basics/summary') &&
       typeof before === 'string' &&
       typeof after === 'string'
     )
@@ -16,7 +16,7 @@ export function preservesFacts(
         numbers(JSON.stringify(source)).includes(value),
       );
     if (
-      key === 'highlights' &&
+      /^\/(?:work|workExperience)\/\d+\/highlights$/.test(key) &&
       Array.isArray(before) &&
       Array.isArray(after) &&
       before.every((x) => typeof x === 'string') &&
@@ -32,7 +32,7 @@ export function preservesFacts(
       return (
         Array.isArray(after) &&
         before.length === after.length &&
-        before.every((item, i) => compare(item, after[i]))
+        before.every((item, i) => compare(item, after[i], `${key}/${i}`))
       );
     if (before && typeof before === 'object')
       return (
@@ -42,7 +42,8 @@ export function preservesFacts(
         Object.keys(before).length === Object.keys(after).length &&
         Object.entries(before).every(
           ([name, value]) =>
-            Object.hasOwn(after, name) && compare(value, after[name], name),
+            Object.hasOwn(after, name) &&
+            compare(value, after[name], `${key}/${name}`),
         )
       );
     return before === after;

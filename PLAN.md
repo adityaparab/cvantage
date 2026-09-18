@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** updated resume review, appearance and workflow activity are implemented and verified. Schemas stay internal; parsed resumes require user approval. Local infrastructure remains separate from future Railway deployment.
-**Next action:** live provider quality evaluation and Railway deployment remain separate pending work; all requested UI/activity milestones are complete.
+**Current state:** seeded-schema extraction is implemented and verified, alongside resume review, appearance and streamed workflow activity. Schemas stay internal; parsed resumes require user approval.
+**Next action:** merge milestone 13. Live provider quality evaluation and Railway deployment remain separate pending work.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -26,6 +26,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 10. Internal schemas and parsed-resume approval | Complete | 4–5 | Build/lint; 29 unit, 26 integration, 5 client tests; full Chromium journey |
 | 11. Light/dark/system appearance | Complete | 2 | Build/client lint; 7 client tests; Chromium system changes/reload persistence; light/dark screenshots inspected |
 | 12. Streamed workflow activity and notifications | Complete | 10–11 | Full build/both linters; 35 unit, 30 integration, 9 client tests; Chromium streaming/retry/loop/reload/notification/approval/export journey |
+| 13. Seeded additive resume schema | Complete | 4, 10, 12 | Full build/both linters; 40 unit, 36 integration, 10 client tests; Chromium extraction/edit/tailor/export using the supplied layout |
 
 ### How to maintain progress
 
@@ -257,6 +258,17 @@ Completion: MongoDB remains healthy on the local Docker kernel, transactions pas
 
 Completion: activity survives page reloads without rerunning models; accepted parsing and tailoring discard temporary progress; schema content never appears in streamed previews. Tailoring remains an in-process task and reports interruption after a server restart rather than replaying a job description. Live provider quality evaluation remains separate.
 
+### 13. Seeded additive resume schema
+
+- [x] Preserve `schema/schema.json` unchanged and seed its exact definition in an empty database before the first server starts accepting requests.
+- [x] Make repeated/concurrent startup idempotent; retain approved additions and immutably include missing baseline fields in existing registries without migrating saved resumes.
+- [x] Replace full-schema generation with bounded addition proposals that require exact source evidence; reject replacements, removals, constraint changes, unsupported fields and PII.
+- [x] Reuse existing versions for empty additions; retain worker/judge gates, schema publication concurrency and five-attempt budgets.
+- [x] Support baseline references/formats and its `basics.summary`, `work`, and categorized skill layout across extraction, review, editing, tailoring and export; keep actual contact values separate.
+- [x] Verify 40 unit, 36 database/HTTP integration and 10 client tests, full build/both linters, and the Chromium upload-to-export journey. Verify no version churn for a resume already covered by the baseline.
+
+Completion: a fresh startup seeds the supplied file; resumes can add only approved missing fields. Historical versions and corrections remain intact. Incompatible existing field types fail initialization safely instead of being overwritten. Application services remain stopped after isolated verification.
+
 ## Verification commands
 
 Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
@@ -309,7 +321,7 @@ yarn test:models
 | Local MongoDB deployment | `deploy/local/`, deployment boundary docs, `db:*` scripts, and matching `.env.example`; local Docker kernel compatibility setting | Compose validates; fresh and repeated starts healthy; 26 integration tests pass against MongoDB 8.0.32; committed marker survives container recreation; actual app API/UI HTTP 200 | [PR #10](https://github.com/adityaparab/cvantage/pull/10), `feat/local-mongodb-compose`, records the change and merge status. Current `.env` already matches the new instance and was preserved. Existing MongoDB on 27017 remains untouched. Railway is deferred. |
 | Internal schema processing and resume approval | Removed schema editor/manual publication path; hid schema proposals and judge output; always pause mapped results for user approval/rejection | Build, both linters, 29 unit, 26 integration and 5 client tests; Chromium upload-to-download journey passes | [PR #11](https://github.com/adityaparab/cvantage/pull/11), `feat/background-schema-review`; next: appearance selection |
 | Appearance selection | Light, Dark, and System (default); saved preference, live OS changes, pre-paint initialization and shared color tokens | Build/client lint; 7 client tests; Chromium workflow plus appearance/reload checks; both palettes inspected | [PR #12](https://github.com/adityaparab/cvantage/pull/12) merged; streamed workflow activity next |
-
 | Streamed workflow activity | `src/activity`, streaming LiteLLM adapter, protected progress persistence, activity routes, upload/tailoring redirects and notification dropdown | Full build/both linters; 35 unit, 30 integration, 9 client tests; full Chromium journey with 15 redacted requests, retry/loop/reload checks and inspected mobile/dark dropdown | [PR #13](https://github.com/adityaparab/cvantage/pull/13), `feat/workflow-activity`, records the implementation and merge status; live provider evaluation and Railway remain separate |
+| Seeded schema extraction | Supplied `schema/schema.json`, startup seed transaction, additive/evidence-based worker contract, baseline validation/editor/export support and historical compatibility | Full build/both linters; 40 unit, 36 integration, 10 client tests; complete Chromium journey and unchanged-schema version reuse | Merge `feat/seeded-resume-schema`; live provider evaluation and Railway remain separate |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

@@ -6,9 +6,9 @@ The implemented workflow was verified locally with synthetic data. These checks 
 | --- | --- |
 | Backend and frontend builds | Pass |
 | Server ESLint and client Oxlint | Pass |
-| Backend unit tests | 35 pass |
-| MongoDB/HTTP/graph integration tests | 30 pass against local MongoDB 8.0.32 replica set |
-| React behavior tests | 9 pass |
+| Backend unit tests | 40 pass |
+| MongoDB/HTTP/graph integration tests | 36 pass against an isolated local replica set |
+| React behavior tests | 10 pass |
 | Real Chromium UI journey | Pass: register, upload DOCX, redact, five-attempt mapping review, approve, edit, tailor, approve variant, download PDF/DOCX, preview PDF, restore session, logout |
 | Browser workflow privacy | 15 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
 | Navigation/accessibility | Upload redirects to activity; notification links, Escape/focus, reload recovery, theme persistence/system changes, keyboard field navigation and 390 px mobile layout checked |
@@ -30,3 +30,7 @@ Verify the ignored server `.env` against `.env.example`, then run `yarn test:mod
 - Narrative fidelity relies on model assessment plus explicit user review. Immutable factual fields and numerical changes have additional deterministic guards.
 - PDF glyph coverage depends on the configured font; unsupported scripts receive an actionable error and DOCX alternative.
 - Current admission/throttling limits are per process. Public multi-instance deployment requires shared limits and deliberate proxy configuration.
+
+## Supplied-schema baseline verification
+
+Startup seeds the exact `schema/schema.json` contents once, including during concurrent first starts. Tests cover retaining approved additions on restart, additive adoption into an existing registry, safe rollback on incompatible legacy types, unchanged historical records, supported nested additions, rejection of replacements and unsupported source evidence, local date-reference validation, and PII separation. The Chromium journey now uses `basics.summary`, `work`, and `skills[].name/keywords`, checks that unchanged coverage creates no new schema version, and exercises both export formats. Old-layout export and tailoring tests remain in place. Verification used a temporary MongoDB instance; application services were not restarted.

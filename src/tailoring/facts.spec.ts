@@ -47,3 +47,30 @@ it('allows narrative emphasis while protecting facts and numerical claims', () =
     }),
   ).toBe(false);
 });
+
+it('supports seeded summary/work fields without changing factual summaries in other sections', () => {
+  const source = {
+    basics: { summary: 'Software engineer' },
+    work: [{ name: 'Example Labs', highlights: ['Built 3 tools'] }],
+    projects: [{ summary: 'A factual project description' }],
+  };
+  expect(
+    preservesFacts(source, {
+      ...source,
+      basics: { summary: 'Engineer focused on software' },
+      work: [{ ...source.work[0], highlights: ['Delivered 3 tools'] }],
+    }),
+  ).toBe(true);
+  expect(
+    preservesFacts(source, {
+      ...source,
+      work: [{ ...source.work[0], name: 'Invented Labs' }],
+    }),
+  ).toBe(false);
+  expect(
+    preservesFacts(source, {
+      ...source,
+      projects: [{ summary: 'Invented project facts' }],
+    }),
+  ).toBe(false);
+});
