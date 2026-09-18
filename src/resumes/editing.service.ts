@@ -96,7 +96,10 @@ export class EditingService {
   async review(ownerId: string, id: string) {
     const job = await this.database.db
       .collection<ParseJob>('parseJobs')
-      .findOne({ _id: id, ownerId, expiresAt: { $gt: new Date() } });
+      .findOne(
+        { _id: id, ownerId, expiresAt: { $gt: new Date() } },
+        { projection: { leaseToken: 0, leaseUntil: 0 } },
+      );
     if (!job) throw new NotFoundException('Review expired or not found');
     const schema =
       job.stage === 'schema'

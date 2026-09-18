@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import type { Session } from './auth.service';
 export type AuthRequest = Request & { session: Session };
@@ -19,6 +19,10 @@ export function sessionCookie(request: Request) {
 export class SessionGuard implements CanActivate {
   constructor(private readonly auth: AuthService) {}
   async canActivate(context: ExecutionContext) {
+    context
+      .switchToHttp()
+      .getResponse<Response>()
+      .setHeader('Cache-Control', 'no-store');
     const request = context.switchToHttp().getRequest<AuthRequest>();
     request.session = await this.auth.session(sessionCookie(request));
     if (

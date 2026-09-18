@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 1–6 merged; milestone 7 verified on `feat/resume-export`.
-**Next action:** merge exports, then run browser-level readiness checks and finish setup documentation. Live proxy evaluation is pending .env configuration.
+**Current state:** implementation and offline verification are complete. Live provider evaluation remains pending configuration.
+**Next action:** configure `.env` and run `yarn test:models` plus the live scenarios in `docs/verification.md`.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -21,7 +21,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 5. User review and schema-driven editing | Complete | 4 | Full build, both linters, 20 integration and 4 client tests |
 | 6. Job-specific tailoring | Complete (offline) | 5 | Full build, both linters, 15 unit, 21 integration and 4 client tests |
 | 7. On-demand PDF and DOCX export | Complete | 3, 5; 6 for tailored variants | Build/lint, 18 unit, 21 integration, 4 client tests; PDF and LibreOffice DOCX visual checks |
-| 8. End-to-end readiness and documentation | Not started | 1–7 | — |
+| 8. End-to-end readiness and documentation | Offline checks complete; live evaluation pending | 1–7 | Build/lint; 18 unit, 23 integration, 4 client tests; full Chromium journey and desktop/mobile visual checks |
 
 ### How to maintain progress
 
@@ -52,7 +52,9 @@ Use project-specific skills for CVantage invariants and upstream skills for libr
 
 Load `langchain-middleware` when implementing model/tool hooks, and `langchain-dependencies` when changing AI packages. Generic examples must not replace LiteLLM, MongoDB, source-version preservation, privacy requirements, or the bounded worker–judge workflow. Installing these skills has not installed application packages or connected external services.
 
-## Current baseline
+## Original starting baseline
+
+The following describes the repository before milestone 1; the status table above records current implementation.
 
 - Backend: NestJS with `/api/hello`, `/api/health`, and production serving of the compiled React app. No authentication, MongoDB integration, document processing, or AI workflow is implemented.
 - Frontend: React, TypeScript, Vite, and React Router with starter screens. Development requests to `/api` proxy to NestJS.
@@ -210,12 +212,12 @@ Completion: exported files open in standard viewers, contain expected text and P
 
 Dependencies: milestones 1–7.
 
-- [ ] Exercise registration → upload → parsing → correction/review → tailoring → PDF/DOCX download through the UI with deterministic model responses.
+- [x] Exercise registration → upload → parsing → correction/review → tailoring → PDF/DOCX download through the UI with deterministic model responses.
 - [ ] Run representative synthetic resumes through the configured proxy to evaluate extraction, PII handling, judge decisions, and factual tailoring. Record observed quality and failures; do not silently change the confidence threshold.
-- [ ] Check keyboard interaction, field labels, actionable errors, empty states, responsive forms, and in-progress navigation.
-- [ ] Verify logs and graph traces exclude secrets, raw uploads, PII, and unredacted prompts. Track only safe identifiers, stage timing, iteration counts, and failure codes.
-- [ ] Document environment setup, MongoDB requirements, parser/rendering dependencies, supported formats, failure recovery, and the implemented retention policy.
-- [ ] Run the relevant build, lint, unit, API integration, and client checks. Report any skipped live-provider or viewer verification explicitly.
+- [x] Check keyboard interaction, field labels, actionable errors, empty states, responsive forms, and in-progress navigation.
+- [x] Verify logs and graph traces exclude secrets, raw uploads, PII, and unredacted prompts. Track only safe identifiers, stage timing, iteration counts, and failure codes.
+- [x] Document environment setup, MongoDB requirements, parser/rendering dependencies, supported formats, failure recovery, and the implemented retention policy.
+- [x] Run the relevant build, lint, unit, API integration, and client checks. Report any skipped live-provider or viewer verification explicitly.
 
 Completion: all applicable acceptance criteria in `PROJECT.md` have passing evidence, the full flow works from a clean documented setup, and unresolved release blockers are recorded.
 
@@ -229,6 +231,10 @@ yarn lint
 yarn --cwd client lint
 yarn test --runInBand
 yarn test:e2e --runInBand
+yarn --cwd client test
+yarn test:browser
+# Separately, once live settings are available:
+yarn test:models
 ```
 
 `yarn lint` currently applies fixes; inspect its diff. Run focused checks during milestones and the complete relevant suite at integration. Keep deterministic workflow tests offline; isolate live-proxy evaluation from the default suite. Use a disposable test database and synthetic resumes only.
@@ -248,31 +254,21 @@ yarn test:e2e --runInBand
 | Agent setup | Added `AGENT.md` and three project-specific skills; preserved NestJS/React skills | New local skills passed the skill validator; instruction links and formatting checked | Add upstream dependency guidance |
 | Dependency skills | Installed nine upstream LangChain/LangGraph/MongoDB skills and added routing/source records | Checked metadata, entry-point links, and byte-for-byte equality with pinned sources | Application dependencies still need implementation-time selection |
 | Tracker update | Added milestone status, skill mapping, setup completion, and progress-maintenance rules | Local document links and task/status consistency checked | Begin milestone 1: dependency/runtime inspection and configuration |
+| Foundations implementation | Added `src/config`, `src/contracts`, `src/database`, adapter ports, `.env.example`, test database scripts, and `docs/development.md` | Full build; server/client lint; 8 unit tests; 6 HTTP/repository tests against local MongoDB 8.3 replica set | Branch `feat/foundations`; create and merge PR before milestone 2. Retention confirmed: acceptance cleanup and 30-day expiry. |
+| Foundations merged | [PR #1](https://github.com/adityaparab/cvantage/pull/1), `feat/foundations` → `main` | Verified merge via GitHub; started next branch from updated main | Milestone 2 authentication |
+| Authentication implementation | `src/auth`, protected resume routes, React workspace, API helper and client test setup | Build and both linters pass; 8 unit, 9 integration, 2 client tests pass. Session restoration/revocation, expiry, CSRF and cross-user resume/PII isolation verified | Branch `feat/authentication`; create and merge PR before milestone 3 |
+| Authentication merged | [PR #2](https://github.com/adityaparab/cvantage/pull/2), `feat/authentication` → `main` | Merge confirmed; next branch created from updated main | Milestone 3 uploads |
+| Upload implementation | Memory-only PDF/DOCX/DOC extraction, bounded workers, separate PII, redacted-source confirmation and 30-day expiry | Build, both linters, 14 unit, 10 integration and 2 client tests pass; synthetic fixtures cover all formats | Merge `feat/resume-upload`, then parsing graph. Name/location supplied by user; mandatory source review resolves uncertain local detection. |
+| Upload merged | [PR #3](https://github.com/adityaparab/cvantage/pull/3), `feat/resume-upload` → `main` | Merge confirmed | Milestone 4 parsing graph |
+| Parsing implementation | LiteLLM adapter, LangGraph worker/judge/decision nodes, durable MongoDB snapshots and leases, cancellation, bounded counters and schema pinning | Server build/lint; 14 unit tests and 18 integration tests pass, including early/fifth acceptance, both-stage exhaustion, malformed judges, transport errors, restart and concurrent claims | Live smoke pending .env; create/merge PR, then user review |
+| Parsing merged | [PR #4](https://github.com/adityaparab/cvantage/pull/4), `feat/resume-parsing` → `main` | Merge confirmed | User review and editing |
+| Review implementation | Recursive field/schema editors, separate PII form, revision-safe editing, atomic user schema approval and mapping acceptance | Full build, both linters, 20 integration tests and 4 client tests pass. Invalid/PII/stale approvals rejected; old records remain editable against original schema | Merge review PR, then tailoring |
+| Review merged | [PR #5](https://github.com/adityaparab/cvantage/pull/5), `feat/resume-review` → `main` | Merge confirmed | Tailoring separate variants |
+| Tailoring implementation | Separate revision-linked variants, source/proposal comparison, protected factual fields and mandatory user approval | Full build/lint, 15 unit, 21 integration and 4 client tests. Corrected source remains unchanged; invented skills rejected; stale variant writes and cross-user reads rejected | Merge tailoring PR, then on-demand exports. Live wording/fidelity evaluation remains pending configuration |
+| Tailoring merged | [PR #6](https://github.com/adityaparab/cvantage/pull/6), `feat/resume-tailoring` → `main` | Merge confirmed | PDF/DOCX exports |
+| Export implementation | Shared schema-based presentation; memory-only PDF/DOCX, server-side PII, source/approved-variant downloads and PDF preview | Full build/lint; 18 unit, 21 integration and 4 client tests. Unicode/multipage text verified; PDF and DOCX (LibreOffice-rendered) visually inspected. Unsupported glyphs fail clearly | Merge export PR, then browser readiness |
+| Exports merged | [PR #7](https://github.com/adityaparab/cvantage/pull/7), `feat/resume-export` → `main` | Merge confirmed | Browser readiness and documentation |
+| Readiness verification | Real Chromium journey through the actual LiteLLM adapter; keyboard/in-progress navigation; accessible labels; draft PII cleanup and protected-response caching; setup and verification docs | Full build/lint, 18 unit, 23 integration, 4 client tests. Browser passes with 14 redacted model calls, both downloads and clean privacy checks; screenshots inspected | Live proxy evaluation pending `.env` credentials/model identifiers; see `docs/verification.md`. [Readiness PR #8](https://github.com/adityaparab/cvantage/pull/8) records the final integration changes and merge status. |
+
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
-
-| Foundations implementation | Added `src/config`, `src/contracts`, `src/database`, adapter ports, `.env.example`, test database scripts, and `docs/development.md` | Full build; server/client lint; 8 unit tests; 6 HTTP/repository tests against local MongoDB 8.3 replica set | Branch `feat/foundations`; create and merge PR before milestone 2. Retention confirmed: acceptance cleanup and 30-day expiry. |
-
-| Foundations merged | [PR #1](https://github.com/adityaparab/cvantage/pull/1), `feat/foundations` → `main` | Verified merge via GitHub; started next branch from updated main | Milestone 2 authentication |
-
-| Authentication implementation | `src/auth`, protected resume routes, React workspace, API helper and client test setup | Build and both linters pass; 8 unit, 9 integration, 2 client tests pass. Session restoration/revocation, expiry, CSRF and cross-user resume/PII isolation verified | Branch `feat/authentication`; create and merge PR before milestone 3 |
-
-| Authentication merged | [PR #2](https://github.com/adityaparab/cvantage/pull/2), `feat/authentication` → `main` | Merge confirmed; next branch created from updated main | Milestone 3 uploads |
-
-| Upload implementation | Memory-only PDF/DOCX/DOC extraction, bounded workers, separate PII, redacted-source confirmation and 30-day expiry | Build, both linters, 14 unit, 10 integration and 2 client tests pass; synthetic fixtures cover all formats | Merge `feat/resume-upload`, then parsing graph. Name/location supplied by user; mandatory source review resolves uncertain local detection. |
-
-| Upload merged | [PR #3](https://github.com/adityaparab/cvantage/pull/3), `feat/resume-upload` → `main` | Merge confirmed | Milestone 4 parsing graph |
-
-| Parsing implementation | LiteLLM adapter, LangGraph worker/judge/decision nodes, durable MongoDB snapshots and leases, cancellation, bounded counters and schema pinning | Server build/lint; 14 unit tests and 18 integration tests pass, including early/fifth acceptance, both-stage exhaustion, malformed judges, transport errors, restart and concurrent claims | Live smoke pending .env; create/merge PR, then user review |
-
-| Parsing merged | [PR #4](https://github.com/adityaparab/cvantage/pull/4), `feat/resume-parsing` → `main` | Merge confirmed | User review and editing |
-
-| Review implementation | Recursive field/schema editors, separate PII form, revision-safe editing, atomic user schema approval and mapping acceptance | Full build, both linters, 20 integration tests and 4 client tests pass. Invalid/PII/stale approvals rejected; old records remain editable against original schema | Merge review PR, then tailoring |
-
-| Review merged | [PR #5](https://github.com/adityaparab/cvantage/pull/5), `feat/resume-review` → `main` | Merge confirmed | Tailoring separate variants |
-
-| Tailoring implementation | Separate revision-linked variants, source/proposal comparison, protected factual fields and mandatory user approval | Full build/lint, 15 unit, 21 integration and 4 client tests. Corrected source remains unchanged; invented skills rejected; stale variant writes and cross-user reads rejected | Merge tailoring PR, then on-demand exports. Live wording/fidelity evaluation remains pending configuration |
-
-| Tailoring merged | [PR #6](https://github.com/adityaparab/cvantage/pull/6), `feat/resume-tailoring` → `main` | Merge confirmed | PDF/DOCX exports |
-
-| Export implementation | Shared schema-based presentation; memory-only PDF/DOCX, server-side PII, source/approved-variant downloads and PDF preview | Full build/lint; 18 unit, 21 integration and 4 client tests. Unicode/multipage text verified; PDF and DOCX (LibreOffice-rendered) visually inspected. Unsupported glyphs fail clearly | Merge export PR, then browser readiness |

@@ -30,6 +30,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.db
         .collection('sessions')
         .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+      this.db
+        .collection('resumePii')
+        .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
       this.db.collection('resumes').createIndex({ ownerId: 1, updatedAt: -1 }),
       this.db
         .collection('resumePii')

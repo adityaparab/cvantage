@@ -87,6 +87,7 @@ export class UploadsController {
       ownerId,
       resumeId,
       ...parsed.data,
+      expiresAt: new Date(Date.now() + REVIEW_RETENTION_DAYS * 86400000),
       revision: 0,
     };
     const job: ParseJob = {
@@ -180,11 +181,26 @@ export class UploadsController {
   }
   @Post('parsing-jobs/:id/cancel')
   async cancel(@Req() request: AuthRequest, @Param('id') id: string) {
-    const deleted = await this.database.db
-      .collection<ParseJob>('parseJobs')
-      .deleteOne({ _id: id, ownerId: request.session.ownerId });
-    if (!deleted.deletedCount)
-      throw new NotFoundException('Parsing job not found');
+    const session = this.database.client.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const job = await this.database.db
+          .collection<ParseJob>('parseJobs')
+          .findOneAndDelete(
+            { _id: id, ownerId: request.session.ownerId },
+            { session },
+          );
+        if (!job) throw new NotFoundException('Parsing job not found');
+        await this.database.db
+          .collection<PiiRecord>('resumePii')
+          .deleteOne(
+            { ownerId: job.ownerId, resumeId: job.resumeId },
+            { session },
+          );
+      });
+    } finally {
+      await session.endSession();
+    }
     return { cancelled: true };
   }
   @Get('parsing-jobs') list(@Req() request: AuthRequest) {
@@ -212,11 +228,14 @@ export class UploadsController {
   ) {
     const job = await this.database.db
       .collection<ParseJob>('parseJobs')
-      .findOne({
-        _id: id,
-        ownerId: request.session.ownerId,
-        expiresAt: { $gt: new Date() },
-      });
+      .findOne(
+        {
+          _id: id,
+          ownerId: request.session.ownerId,
+          expiresAt: { $gt: new Date() },
+        },
+        { projection: { leaseToken: 0, leaseUntil: 0 } },
+      );
     if (!job)
       throw new NotFoundException(
         'Parsing job expired or not found; upload again',

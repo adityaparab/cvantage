@@ -1,21 +1,53 @@
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) { super(message); this.status = status }
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
 }
 let csrfToken = ''
-export function setCsrfToken(token: string) { csrfToken = token }
-async function responseFor(path: string, options: RequestInit = {}): Promise<Response> {
+export function setCsrfToken(token: string) {
+  csrfToken = token
+}
+async function responseFor(
+  path: string,
+  options: RequestInit = {},
+): Promise<Response> {
   const response = await fetch(`/api${path}`, {
-    ...options, credentials: 'same-origin',
-    headers: { ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), 'X-Requested-With': 'CVantage', 'X-CSRF-Token': csrfToken, ...options.headers },
+    ...options,
+    credentials: 'same-origin',
+    headers: {
+      ...(options.body instanceof FormData
+        ? {}
+        : { 'Content-Type': 'application/json' }),
+      'X-Requested-With': 'CVantage',
+      'X-CSRF-Token': csrfToken,
+      ...options.headers,
+    },
   })
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null)
-    const message = body && typeof body === 'object' && 'message' in body && typeof body.message === 'string' ? body.message : 'The request failed. Please try again.'
+    const message =
+      body &&
+      typeof body === 'object' &&
+      'message' in body &&
+      typeof body.message === 'string'
+        ? body.message
+        : 'The request failed. Please try again.'
     throw new ApiError(response.status, message)
   }
   return response
 }
 
-export async function api<T>(path:string,options:RequestInit={}):Promise<T> {return (await responseFor(path,options)).json() as Promise<T>}
-export async function apiFile(path:string,options:RequestInit):Promise<Blob>{return (await responseFor(path,options)).blob()}
+export async function api<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  return (await responseFor(path, options)).json() as Promise<T>
+}
+export async function apiFile(
+  path: string,
+  options: RequestInit,
+): Promise<Blob> {
+  return (await responseFor(path, options)).blob()
+}

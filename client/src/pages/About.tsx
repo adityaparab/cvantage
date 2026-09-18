@@ -1,18 +1,28 @@
 import Nav from '../components/Nav'
-import ApiStatus from '../components/ApiStatus'
-
 export default function About() {
   return (
-    <main style={{ maxWidth: 640, margin: '0 auto', padding: '2rem' }}>
+    <main className="app-shell">
       <Nav />
-      <h1>About</h1>
+      <h1>Make your experience count.</h1>
       <p>
-        This page lives entirely in the React SPA. Reload this URL directly
-        (<code>/about</code>) — NestJS has no <code>/about</code> route, so it
-        returns <code>index.html</code> and React Router renders this page. That
-        is the single-page-app deep-link fallback working end to end.
+        CVantage helps you turn your experience into a clear, relevant resume.
       </p>
-      <ApiStatus />
+      <ol>
+        <li>Upload a readable PDF, DOCX, or DOC file up to 20 MB.</li>
+        <li>
+          Check that identifying details are removed before AI processing.
+        </li>
+        <li>
+          Review and correct your experience, then tailor a separate version to
+          a job description.
+        </li>
+        <li>Approve your changes and download PDF or DOCX.</li>
+      </ol>
+      <p>
+        Original files are discarded after extraction. Unfinished reviews expire
+        after 30 days. Contact details stay separate and are restored when you
+        export.
+      </p>
     </main>
   )
 }
