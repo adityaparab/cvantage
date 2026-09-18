@@ -170,6 +170,19 @@ async function main() {
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(origin);
+    assert.equal(await page.getByLabel('Appearance').inputValue(), 'system');
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    await page.screenshot({ path: join(output, 'appearance-dark.png') });
+    await page.getByLabel('Appearance').selectOption('light');
+    await page.reload();
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+    assert.equal(await page.getByLabel('Appearance').inputValue(), 'light');
+    await page.screenshot({ path: join(output, 'appearance-light.png') });
+    await page.getByLabel('Appearance').selectOption('system');
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    await page.emulateMedia({ colorScheme: 'light' });
+
     await page
       .getByRole('button', { name: 'New here? Create an account' })
       .click();

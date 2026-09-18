@@ -1,7 +1,39 @@
 :root {
+  color-scheme: light;
+  --text: #243b37;
+  --background: #f5f4ef;
+  --surface: #ffffff;
+  --surface-muted: #f1f5ee;
+  --muted: #66716b;
+  --border: #ced8cf;
+  --accent: #245b48;
+  --button: #245b48;
+  --button-text: #ffffff;
+  --focus: #b98336;
+  --error-background: #fce6df;
+  --error-text: #823e31;
+  --shadow: #233b3710;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --text: #e5ede8;
+  --background: #101917;
+  --surface: #192521;
+  --surface-muted: #20322b;
+  --muted: #aabbb2;
+  --border: #3c5147;
+  --accent: #8edab0;
+  --button: #92d4b0;
+  --button-text: #102d20;
+  --focus: #e3b86a;
+  --error-background: #422925;
+  --error-text: #ffc2ac;
+  --shadow: #00000024;
+}
+:root {
   font-family: 'DM Sans', system-ui, sans-serif;
-  color: #243b37;
-  background: #f5f4ef;
+  color: var(--text);
+  background: var(--background);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -19,8 +51,8 @@ select {
 }
 button {
   cursor: pointer;
-  background: #245b48;
-  color: white;
+  background: var(--button);
+  color: var(--button-text);
   border: 0;
   border-radius: 8px;
   padding: 12px 22px;
@@ -35,8 +67,10 @@ a {
 }
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
-  outline: 3px solid #b98336;
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 input,
@@ -45,10 +79,10 @@ select {
   display: block;
   width: 100%;
   padding: 12px;
-  border: 1px solid #d1d8d2;
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: #fff;
-  color: #243b37;
+  background: var(--surface);
+  color: var(--text);
 }
 label {
   display: block;
@@ -74,15 +108,15 @@ h2 {
 }
 .muted,
 .hint {
-  color: #66716b;
+  color: var(--muted);
 }
 .hint {
   font-size: 13px;
 }
 .error {
-  background: #fce6df;
+  background: var(--error-background);
   padding: 16px;
-  color: #823e31;
+  color: var(--error-text);
   border-radius: 8px;
 }
 p {

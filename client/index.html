@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Apply the saved/system theme before the first paint.
+      let appearance = 'system';
+      try {
+        appearance = localStorage.getItem('cvantage-appearance') || 'system';
+      } catch {}
+      document.documentElement.dataset.theme = ['light', 'dark'].includes(
+        appearance,
+      )
+        ? appearance
+        : matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+    </script>
     <title>CVantage — Make your experience count</title>
   </head>
   <body>

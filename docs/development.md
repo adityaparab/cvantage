@@ -101,3 +101,7 @@ Unaccepted PII now shares the draft's 30-day TTL. Acceptance removes that TTL in
 Live evaluation is still required with configured LiteLLM credentials and model identifiers. Run `yarn test:models` with synthetic inputs; review extraction coverage, schema additions, judge decisions and tailoring factuality before relying on model output. The current confidence threshold remains 0.90. No live quality claim is made from deterministic fixtures.
 
 Before public multi-instance deployment, replace in-process authentication and model concurrency limits with shared limits and configure trusted proxy handling. This repository currently implements a single-process application with MongoDB job leases for crash recovery.
+
+## Appearance
+
+The header offers System (default), Light, and Dark. A browser-local preference persists across reloads and tabs; System follows live OS changes. The initial HTML applies the selected palette before rendering. Shared CSS variables cover forms, panels, errors, and focus indicators. If browser storage is unavailable, switching still works for the current page.
