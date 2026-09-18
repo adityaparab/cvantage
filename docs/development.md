@@ -6,14 +6,32 @@ Copy `.env.example` to `.env`, populate credentials/model identifiers and a rand
 
 ## Local MongoDB
 
-Use a local MongoDB replica set for transactions. For an installed MongoDB server, create a data directory outside the repository and run:
+Use a local MongoDB replica set for transactions. An existing standalone `mongod` does not become a replica set just because the URI contains `replicaSet=cvantage`. The server must start with `--replSet cvantage`, then be initialized.
+
+For an installed MongoDB server and a free port 27017, create a durable, ignored data directory and run from the repository root:
 
 ```sh
-mkdir -p /tmp/cvantage-mongo-dev
-mongod --dbpath /tmp/cvantage-mongo-dev --replSet cvantage --bind_ip 127.0.0.1 --port 27017
+mkdir -p .local-data/mongodb
+mongod --dbpath "$PWD/.local-data/mongodb" --replSet cvantage --bind_ip 127.0.0.1 --port 27017
 ```
 
-In another terminal: `node scripts/init-mongo.cjs 27017 cvantage`. Wait for the server to elect its primary, then run `yarn dev`. Development data under `/tmp` is disposable; choose a durable local path if needed. Production requires an authenticated deployment; these loopback commands are for local development only.
+In another terminal: `node scripts/init-mongo.cjs 27017 cvantage`. Wait for the server to elect its primary, then run `yarn dev`. Restart MongoDB with the same data directory, port, and replica-set name after a reboot; initialization is needed only once. Production requires an authenticated deployment; these loopback commands are for local development only.
+
+If another MongoDB already uses port 27017, keep it intact and use port 27018 for this project's instance in both commands. Set `MONGODB_URI=mongodb://127.0.0.1:27018/?replicaSet=cvantage` in `.env`. A separate instance has a separate database; it does not migrate existing data. Never point two MongoDB processes at the same data directory.
+
+### Startup troubleshooting
+
+Startup errors identify the failing configuration or service without printing credentials or database values:
+
+| Message | Action |
+| --- | --- |
+| Invalid environment configuration | Populate the named `.env` fields; the session secret needs at least 32 characters. |
+| Invalid MongoDB connection configuration | Correct the URI syntax and options in `MONGODB_URI`. |
+| MongoDB connection failed | Check host/port reachability, replica-set initialization, and matching `replicaSet` name. A standalone server at that address also causes this error when the URI requests a replica set. |
+| MongoDB is running as a standalone server | Follow the replica-set setup above. Removing `replicaSet` from the URI does not enable the transactions CVantage needs. |
+| MongoDB authentication failed / access denied | Check credentials, `authSource`, and read/write/index-creation permissions for `MONGODB_DATABASE`. |
+| MongoDB initialization failed | Check database permissions and conflicting existing indexes. |
+| PORT is already in use | Stop the conflicting application or choose a free `PORT` in `.env`. |
 
 For isolated tests, start a second server with its own path and port:
 

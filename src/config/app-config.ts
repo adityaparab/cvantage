@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
+import { StartupError } from '../startup-error';
 
 const environmentSchema = z.object({
   EXPORT_FONT_PATH: z
@@ -29,7 +30,9 @@ export function validateEnvironment(input: unknown): Environment {
     const keys = [
       ...new Set(result.error.issues.map((issue) => issue.path.join('.'))),
     ];
-    throw new Error(`Invalid environment configuration: ${keys.join(', ')}`);
+    throw new StartupError(
+      `Invalid environment configuration: ${keys.join(', ')}. Check these fields in .env.`,
+    );
   }
   const url = new URL(result.data.LITELLM_BASE_URL);
   if (
@@ -37,10 +40,12 @@ export function validateEnvironment(input: unknown): Environment {
     url.username ||
     url.password
   ) {
-    throw new Error('Invalid environment configuration: LITELLM_BASE_URL');
+    throw new StartupError(
+      'Invalid environment configuration: LITELLM_BASE_URL',
+    );
   }
   if (result.data.NODE_ENV === 'production' && url.protocol !== 'https:') {
-    throw new Error('Production LITELLM_BASE_URL must use HTTPS');
+    throw new StartupError('Production LITELLM_BASE_URL must use HTTPS');
   }
   return result.data;
 }
