@@ -129,7 +129,7 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
       job.stage === 'schema' ? 'schemaIterations' : 'mappingIterations';
     if (job[counter] >= MAX_STAGE_ITERATIONS) {
       await this.checkpoint(job, {
-        status: 'review_required',
+        status: job.stage === 'schema' ? 'failed' : 'review_required',
         failureCode: 'ITERATIONS_EXHAUSTED',
       });
       return;
@@ -192,7 +192,9 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
           await this.checkpoint(job, {
             status:
               job[counter] >= MAX_STAGE_ITERATIONS
-                ? 'review_required'
+                ? job.stage === 'schema'
+                  ? 'failed'
+                  : 'review_required'
                 : 'queued',
             failureCode: state.valid
               ? 'JUDGE_REVISION_REQUIRED'
@@ -244,9 +246,7 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
         if (!(error instanceof ConflictException)) throw error;
         await this.checkpoint(job, {
           status:
-            job.schemaIterations >= MAX_STAGE_ITERATIONS
-              ? 'review_required'
-              : 'queued',
+            job.schemaIterations >= MAX_STAGE_ITERATIONS ? 'failed' : 'queued',
           failureCode: 'SCHEMA_CHANGED_REBASE_REQUIRED',
         });
       }
@@ -255,20 +255,10 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
     const schema = await this.schemas.get(job.schemaVersion!);
     if (!schema || !validateResumeData(schema.definition, candidate))
       throw new Error('INVALID_MAPPING');
-    await this.resumes.accept(
-      {
-        _id: job.resumeId,
-        ownerId: job.ownerId,
-        schemaVersion: schema.version,
-        data: candidate,
-        revision: 0,
-        acceptanceSource: 'judge',
-        schemaAcceptanceSource: job.schemaApprovalSource ?? 'judge',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      job._id,
-      job.revision,
-    );
+    await this.checkpoint(job, {
+      candidate,
+      status: 'review_required',
+      failureCode: undefined,
+    });
   }
 }

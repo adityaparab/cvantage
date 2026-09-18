@@ -209,7 +209,7 @@ async function main() {
     await page.getByRole('button', { name: '← Back to uploads' }).click();
     await page.getByRole('button', { name: /Resume upload ·/ }).click();
     await page
-      .getByRole('heading', { name: 'Your review is needed' })
+      .getByRole('heading', { name: 'Review your parsed resume' })
       .waitFor();
     assert.equal(mappingJudgments, 5);
     await page
@@ -220,7 +220,7 @@ async function main() {
         'I reviewed these fields for accuracy and removed identifying details.',
       )
       .check();
-    await page.getByRole('button', { name: 'Approve reviewed result' }).click();
+    await page.getByRole('button', { name: 'Approve parsed resume' }).click();
     await page.getByRole('button', { name: /Open and edit/ }).click();
     const editor = page
       .locator('form')

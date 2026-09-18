@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** implementation, offline verification, and local MongoDB deployment are complete. Docker Compose provides a healthy replica set on port 27018, and the application starts with the current `.env`. Railway deployment is deferred; live provider evaluation remains pending.
-**Next action:** run `yarn test:models` plus the live scenarios in `docs/verification.md`. Add Railway configuration separately when cloud deployment is requested.
+**Current state:** implementing the updated resume review and workflow experience. Schema processing becomes internal; parsed resumes always require user approval. Local infrastructure remains verified.
+**Next action:** theme selection (11), then streamed activity and workflow notifications (12), each on its own feature branch. Live provider quality evaluation and Railway deployment remain separate pending work.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -23,6 +23,9 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 7. On-demand PDF and DOCX export | Complete | 3, 5; 6 for tailored variants | Build/lint, 18 unit, 21 integration, 4 client tests; PDF and LibreOffice DOCX visual checks |
 | 8. End-to-end readiness and documentation | Offline checks complete; live evaluation pending | 1–7 | Build/lint; 18 unit, 23 integration, 4 client tests; full Chromium journey and desktop/mobile visual checks |
 | 9. Separate local MongoDB deployment | Complete | 1, startup diagnostics | Compose validation; fresh/repeated startup; 26 integration tests; transaction persistence across recreation; actual app API/UI HTTP 200 |
+| 10. Internal schemas and parsed-resume approval | Complete | 4–5 | Build/lint; 29 unit, 26 integration, 5 client tests; full Chromium journey |
+| 11. Light/dark/system appearance | Planned | 2 | Persisted selection, OS changes, accessible themed UI |
+| 12. Streamed workflow activity and notifications | Planned | 10–11 | Dedicated activity routes, model streaming, visible loops/retries, upload redirect, aligned active-workflow dropdown |
 
 ### How to maintain progress
 
@@ -168,7 +171,7 @@ Dependencies: milestones 1–3. Apply the retention policy below to durable sour
 - [x] Give each stage its own maximum of five worker–judge iterations, including the first attempt. Stop on acceptance; malformed judge responses consume an iteration. Bound transport retries and timeouts separately.
 - [x] Implement the exact acceptance gate: valid response, matching stage, `accept`, four true checks, confidence at least 0.90, empty issues, and successful application schema/PII validation.
 - [x] Supply source text as data, separate from instructions. Validate and sanitize worker output and judge feedback before persistence or reuse. Grant parsing models no unrelated tools.
-- [x] Publish only approved global schemas. Reuse unchanged definitions, atomically rebase concurrent additions within the remaining iteration budget, and route unresolved conflicts to review.
+- [x] Publish only approved global schemas. Reuse unchanged definitions, atomically rebase concurrent additions within the remaining iteration budget, and report unresolved schema conflicts as processing failures (updated in milestone 10).
 - [x] Pin the schema version before mapping and record it on the accepted resume. Leave existing resumes unchanged when a new global version appears.
 - [x] Persist counters and sanitized workflow state, implement leases and cancellation, and make resume saving/publication idempotent. Recovery must not reset iteration budgets; ambiguous interrupted calls must not permit unbounded retries.
 
@@ -179,12 +182,12 @@ Completion: deterministic fake-model tests cover early acceptance, fifth-iterati
 Dependencies: milestone 4.
 
 - [x] Render nested objects, arrays, categorized skills, optional fields, and discovered sections using the record's schema version. Display PII in a separate form.
-- [x] Show unresolved issues, confidence, and stage-specific corrections. Translate schema review into editable field definitions rather than requiring users to write raw JSON.
+- [x] Show unresolved issues, confidence, and stage-specific corrections. Schema editing was removed in milestone 10; only parsed resume content is reviewed.
 - [x] Implement review approval that rechecks structure and PII, records the user's decision separately, and resumes only the appropriate next stage. Review does not reset exhausted model loops.
 - [x] Guard global schema publication from destructive user edits or user-specific values; user review cannot bypass required sections, compatibility, or privacy checks.
 - [x] Preserve user corrections with revision checks. Reject stale writes instead of overwriting newer edits or replacing them with regenerated values.
 
-Completion: users can resolve schema and mapping failures, edit every supported field, and separately correct PII. Tests cover invalid approval, stale writes, old-schema editing, and preservation of corrections.
+Completion (updated in milestone 10): schema work stays internal; users approve/reject parsed resumes, edit every supported field, and separately correct PII. Tests cover invalid approval, stale writes, old-schema editing, and preservation of corrections.
 
 ### 6. Job-specific tailoring
 
@@ -284,3 +287,5 @@ yarn test:models
 
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
+
+| Internal schema processing and resume approval | Removed schema editor/manual publication path; hid schema proposals and judge output; always pause mapped results for user approval/rejection | Build, both linters, 29 unit, 26 integration and 5 client tests; Chromium upload-to-download journey passes | Merge `feat/background-schema-review`, then appearance selection |

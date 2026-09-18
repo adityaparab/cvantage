@@ -9,14 +9,10 @@ import { DatabaseService } from '../database/database.service';
 import { ResumeRepository } from '../database/resume.repository';
 import { SchemaRepository } from '../database/schema.repository';
 import type { ParseJob, PiiRecord, ResumeRecord } from '../database/records';
-import {
-  BASE_RESUME_SCHEMA,
-  parseResumeSchema,
-  preservesFields,
-  validateResumeData,
-} from '../contracts/resume-schema';
+import { validateResumeData } from '../contracts/resume-schema';
 import { reviewSchema } from '../contracts/workflow';
 import { containsPii, piiSchema } from '../documents/pii';
+import { publicJob } from '../parsing/job-view';
 const editSchema = z
   .object({ revision: z.number().int().min(0), data: z.unknown() })
   .strict();
@@ -101,20 +97,12 @@ export class EditingService {
         { projection: { leaseToken: 0, leaseUntil: 0 } },
       );
     if (!job) throw new NotFoundException('Review expired or not found');
-    const schema =
-      job.stage === 'schema'
-        ? await this.schemas.latest()
-        : await this.schemas.get(job.schemaVersion ?? 0);
-    const definition = schema?.definition ?? BASE_RESUME_SCHEMA;
-    if (job.stage === 'schema') {
-      try {
-        job.candidate = parseResumeSchema(job.candidate);
-      } catch {
-        job.candidate = definition;
-      }
-    }
-    return { job, schema: definition };
+    if (job.stage === 'schema') return { job: publicJob(job) };
+    const schema = await this.schemas.get(job.schemaVersion ?? 0);
+    if (!schema) throw new NotFoundException('Resume fields are unavailable');
+    return { job: publicJob(job), schema: schema.definition };
   }
+
   async approve(ownerId: string, id: string, input: unknown) {
     const body = reviewSchema.safeParse(input);
     if (!body.success || !body.data.approve)
@@ -135,28 +123,7 @@ export class EditingService {
       throw new BadRequestException(
         'Remove identifying details before approval',
       );
-    if (job.stage === 'schema') {
-      let definition: ReturnType<typeof parseResumeSchema>;
-      try {
-        definition = parseResumeSchema(candidate);
-      } catch {
-        throw new BadRequestException(
-          'Check field definitions and required sections',
-        );
-      }
-      if (!preservesFields(schema, definition))
-        throw new BadRequestException(
-          'Published fields and their types must be preserved',
-        );
-      const current = await this.schemas.latest();
-      await this.schemas.publish(definition, current?.version ?? 0, {
-        jobId: id,
-        ownerId,
-        revision: job.revision,
-      });
-      return { resumeId: job.resumeId, status: 'queued' };
-    }
-    if (!validateResumeData(schema, candidate))
+    if (!schema || !validateResumeData(schema, candidate))
       throw new BadRequestException('Check required fields and field types');
     await this.resumes.accept(
       {

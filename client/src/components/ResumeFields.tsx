@@ -1,23 +1,23 @@
-import { useId, useState } from 'react'
-import { emptyValue, labelFor } from '../lib/schema'
-import type { FieldSchema } from '../lib/schema'
+import { useId } from 'react';
+import { emptyValue, labelFor } from '../lib/schema';
+import type { FieldSchema } from '../lib/schema';
 export function ResumeFields({
   schema,
   value,
   onChange,
   label = 'Resume',
 }: {
-  schema: FieldSchema
-  value: unknown
-  onChange: (value: unknown) => void
-  label?: string
+  schema: FieldSchema;
+  value: unknown;
+  onChange: (value: unknown) => void;
+  label?: string;
 }) {
-  const id = useId()
+  const id = useId();
   if (schema.type === 'object') {
     const object =
       value && typeof value === 'object' && !Array.isArray(value)
         ? (value as Record<string, unknown>)
-        : {}
+        : {};
     return (
       <fieldset>
         <legend>{label}</legend>
@@ -31,10 +31,10 @@ export function ResumeFields({
           />
         ))}
       </fieldset>
-    )
+    );
   }
   if (schema.type === 'array' && schema.items) {
-    const items = Array.isArray(value) ? value : []
+    const items = Array.isArray(value) ? value : [];
     return (
       <fieldset>
         <legend>{label}</legend>
@@ -65,7 +65,7 @@ export function ResumeFields({
           Add {label.toLowerCase()}
         </button>
       </fieldset>
-    )
+    );
   }
   return (
     <div className="field">
@@ -94,133 +94,5 @@ export function ResumeFields({
         />
       )}
     </div>
-  )
-}
-function definition(type: FieldSchema['type']): FieldSchema {
-  return type === 'object'
-    ? { type, additionalProperties: false, properties: {} }
-    : type === 'array'
-      ? { type, items: { type: 'string' } }
-      : { type }
-}
-export function SchemaFields({
-  schema,
-  base,
-  onChange,
-  label = 'Resume fields',
-}: {
-  schema: FieldSchema
-  base?: FieldSchema
-  onChange: (value: FieldSchema) => void
-  label?: string
-}) {
-  const [key, setKey] = useState('')
-  const [type, setType] = useState<FieldSchema['type']>('string')
-  return (
-    <fieldset>
-      <legend>{label}</legend>
-      <label>
-        Field type
-        <select
-          value={schema.type}
-          disabled={!!base}
-          onChange={(event) =>
-            onChange(definition(event.target.value as FieldSchema['type']))
-          }
-        >
-          {['string', 'number', 'boolean', 'object', 'array'].map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </select>
-      </label>
-      {schema.type === 'array' && schema.items && (
-        <SchemaFields
-          schema={schema.items}
-          base={base?.items}
-          onChange={(items) => onChange({ ...schema, items })}
-          label="List item"
-        />
-      )}
-      {schema.type === 'object' && (
-        <>
-          {Object.entries(schema.properties ?? {}).map(([name, field]) => (
-            <div key={name}>
-              <SchemaFields
-                label={labelFor(name)}
-                schema={field}
-                base={base?.properties?.[name]}
-                onChange={(next) =>
-                  onChange({
-                    ...schema,
-                    properties: { ...schema.properties, [name]: next },
-                  })
-                }
-              />
-              {!base?.properties?.[name] && (
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() =>
-                    onChange({
-                      ...schema,
-                      properties: Object.fromEntries(
-                        Object.entries(schema.properties ?? {}).filter(
-                          ([k]) => k !== name,
-                        ),
-                      ),
-                      required: schema.required?.filter((k) => k !== name),
-                    })
-                  }
-                >
-                  Remove {labelFor(name)}
-                </button>
-              )}
-            </div>
-          ))}
-          <div className="field-grid">
-            <label>
-              New field key
-              <input
-                value={key}
-                onChange={(event) => setKey(event.target.value)}
-                placeholder="e.g. education"
-              />
-            </label>
-            <label>
-              New field type
-              <select
-                value={type}
-                onChange={(event) =>
-                  setType(event.target.value as FieldSchema['type'])
-                }
-              >
-                {['string', 'number', 'boolean', 'object', 'array'].map(
-                  (item) => (
-                    <option key={item}>{item}</option>
-                  ),
-                )}
-              </select>
-            </label>
-          </div>
-          <button
-            type="button"
-            className="secondary"
-            disabled={
-              !/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(key) ||
-              Object.hasOwn(schema.properties ?? {}, key)
-            }
-            onClick={() => {
-              onChange({
-                ...schema,
-                properties: { ...schema.properties, [key]: definition(type) },
-              })
-              setKey('')
-            }}
-          >
-            Add field definition
-          </button>
-        </>
-      )}
-    </fieldset>
-  )
+  );
 }
