@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** implementation and offline verification are complete. Live provider evaluation remains pending configuration.
-**Next action:** configure `.env` and run `yarn test:models` plus the live scenarios in `docs/verification.md`.
+**Current state:** implementation and offline verification are complete. Startup diagnostics are repaired and verified. Local startup still needs a replica set: the configured MongoDB is standalone. Live provider evaluation remains pending.
+**Next action:** merge `feat/startup-diagnostics`, then resolve the pending database setup choice (separate development instance or restart/reconfigure the existing server). Then run `yarn test:models` plus the live scenarios in `docs/verification.md`.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -269,6 +269,7 @@ yarn test:models
 | Export implementation | Shared schema-based presentation; memory-only PDF/DOCX, server-side PII, source/approved-variant downloads and PDF preview | Full build/lint; 18 unit, 21 integration and 4 client tests. Unicode/multipage text verified; PDF and DOCX (LibreOffice-rendered) visually inspected. Unsupported glyphs fail clearly | Merge export PR, then browser readiness |
 | Exports merged | [PR #7](https://github.com/adityaparab/cvantage/pull/7), `feat/resume-export` → `main` | Merge confirmed | Browser readiness and documentation |
 | Readiness verification | Real Chromium journey through the actual LiteLLM adapter; keyboard/in-progress navigation; accessible labels; draft PII cleanup and protected-response caching; setup and verification docs | Full build/lint, 18 unit, 23 integration, 4 client tests. Browser passes with 14 redacted model calls, both downloads and clean privacy checks; screenshots inspected | Live proxy evaluation pending `.env` credentials/model identifiers; see `docs/verification.md`. [Readiness PR #8](https://github.com/adityaparab/cvantage/pull/8) records the final integration changes and merge status. |
+| Startup diagnostics | `src/main.ts`, configuration and database initialization now report safe actionable errors; reject standalone topology before writes; document persistent local replica-set setup | Server build/lint; 29 unit and 26 integration tests; real compiled process exits cleanly against standalone MongoDB and serves API/UI HTTP 200 against an isolated replica set | Publish/merge `feat/startup-diagnostics`. Local `.env` and existing MongoDB remain unchanged pending the user's database setup choice. |
 
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
