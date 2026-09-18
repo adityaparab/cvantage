@@ -57,3 +57,7 @@ Run `yarn build:server && node scripts/smoke-models.cjs` after configuring `.env
 ## Review and editing
 
 Failed/exhausted jobs pause in application-owned MongoDB state. User approval validates schema/data and PII again, records the approval source separately, and continues only the next stage without resetting counters. Schema publication and the review transition share one transaction. Recursive editors support all schema field types; published field types remain locked in schema review. Existing resumes always edit against their recorded version. Contact updates compare both contact and resume revisions, so they cannot authorize an accidental overwrite of a newer resume edit.
+
+## Tailoring
+
+Tailoring uses a saved source revision and its extraction schema. It permits summary/highlight wording changes while preserving all other values, list order and highlight counts; new numeric claims are rejected. The judge checks narrative fidelity, and every proposal still requires user review with a source/proposal comparison. Model judgment is not proof of factual equivalence. Variants store the non-PII source snapshot for comparison and never overwrite the source. Older-source variants are labeled in the UI. Calls are bounded to one worker and one judge, without retries, with at most two active requests per process and one per account. The job description is redacted and requires user confirmation before use; it is not stored.

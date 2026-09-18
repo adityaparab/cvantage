@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 1–4 merged; milestone 5 verified on `feat/resume-review`.
-**Next action:** merge review milestone, then implement job-specific tailoring. Live proxy evaluation is pending .env configuration.
+**Current state:** milestones 1–5 merged; milestone 6 verified on `feat/resume-tailoring`.
+**Next action:** merge tailoring milestone, then implement on-demand PDF/DOCX exports. Live proxy evaluation is pending .env configuration.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -19,7 +19,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 3. Upload, extraction, and PII separation | Complete | 1–2 | Full build, both linters, 14 unit, 10 integration, 2 client tests; real PDF/DOCX/DOC fixtures |
 | 4. Global schema registry and bounded parsing graph | Complete (offline); live evaluation pending | 1–3 | Server build/lint, 14 unit and 18 integration tests; bounded graph and recovery tested |
 | 5. User review and schema-driven editing | Complete | 4 | Full build, both linters, 20 integration and 4 client tests |
-| 6. Job-specific tailoring | Not started | 5 | — |
+| 6. Job-specific tailoring | Complete (offline) | 5 | Full build, both linters, 15 unit, 21 integration and 4 client tests |
 | 7. On-demand PDF and DOCX export | Not started | 3, 5; 6 for tailored variants | — |
 | 8. End-to-end readiness and documentation | Not started | 1–7 | — |
 
@@ -187,11 +187,11 @@ Completion: users can resolve schema and mapping failures, edit every supported 
 
 Dependencies: milestone 5.
 
-- [ ] Accept a job description and use a snapshot of the latest user-corrected resume, with its recorded schema version, as authoritative input.
-- [ ] Redact inputs and instruct the model to change wording/emphasis without introducing unsupported facts. Treat job-description instructions as untrusted content.
-- [ ] Validate structure and PII and compare proposed facts against the source; surface uncertainty for user review rather than treating a model confidence score as proof.
-- [ ] Save a separate variant linked to the source revision. Present changes for review and editing; clearly identify variants based on an older source revision.
-- [ ] Bound tailoring calls and failures independently. Do not silently extend the two parsing-loop budgets to this separate workflow.
+- [x] Accept a job description and use a snapshot of the latest user-corrected resume, with its recorded schema version, as authoritative input.
+- [x] Redact inputs and instruct the model to change wording/emphasis without introducing unsupported facts. Treat job-description instructions as untrusted content.
+- [x] Validate structure and PII and compare proposed facts against the source; surface uncertainty for user review rather than treating a model confidence score as proof.
+- [x] Save a separate variant linked to the source revision. Present changes for review and editing; clearly identify variants based on an older source revision.
+- [x] Bound tailoring calls and failures independently. Do not silently extend the two parsing-loop budgets to this separate workflow.
 
 Completion: tailoring leaves the source and corrections untouched, preserves factual fields in representative fixtures, rejects invalid outputs, and allows the user to review the selected variant.
 
@@ -268,3 +268,7 @@ For future entries, record: milestone/task, concrete changed paths, checks and r
 | Parsing merged | [PR #4](https://github.com/adityaparab/cvantage/pull/4), `feat/resume-parsing` → `main` | Merge confirmed | User review and editing |
 
 | Review implementation | Recursive field/schema editors, separate PII form, revision-safe editing, atomic user schema approval and mapping acceptance | Full build, both linters, 20 integration tests and 4 client tests pass. Invalid/PII/stale approvals rejected; old records remain editable against original schema | Merge review PR, then tailoring |
+
+| Review merged | [PR #5](https://github.com/adityaparab/cvantage/pull/5), `feat/resume-review` → `main` | Merge confirmed | Tailoring separate variants |
+
+| Tailoring implementation | Separate revision-linked variants, source/proposal comparison, protected factual fields and mandatory user approval | Full build/lint, 15 unit, 21 integration and 4 client tests. Corrected source remains unchanged; invented skills rejected; stale variant writes and cross-user reads rejected | Merge tailoring PR, then on-demand exports. Live wording/fidelity evaluation remains pending configuration |

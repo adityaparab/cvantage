@@ -1,3 +1,5 @@
+import { TailoringService } from './tailoring/tailoring.service';
+import { TailoringController } from './tailoring/tailoring.controller';
 import { ReviewController } from './resumes/review.controller';
 import { EditingService } from './resumes/editing.service';
 import { ParsingService } from './parsing/parsing.service';
@@ -34,12 +36,14 @@ import { AppService } from './app.service';
     ResumesController,
     UploadsController,
     ReviewController,
+    TailoringController,
   ],
   providers: [
     AppService,
     LocalDocumentExtractor,
     ParsingService,
     EditingService,
+    TailoringService,
     { provide: ModelGateway, useClass: LiteLlmGateway },
   ],
 })
