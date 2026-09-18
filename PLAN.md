@@ -8,16 +8,16 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** planning and skill setup complete; application implementation not started.
-**Next action:** begin milestone 1 with dependency/runtime inspection and validated configuration. No unresolved product decision blocks this initial work.
+**Current state:** milestone 1 implemented and verified on `feat/foundations`; PR merge pending.
+**Next action:** merge the foundations PR, then start authentication on `feat/authentication`.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
 | 0. Specification, agent instructions, and skills | Complete | — | `PROJECT.md`, `AGENT.md`, installed skills and source manifest; skill metadata, links, and upstream copies validated |
-| 1. Configuration, persistence, and contracts | Not started | 0 | — |
+| 1. Configuration, persistence, and contracts | Verified; merge pending | 0 | Build, both linters, 8 unit tests and 6 real MongoDB/HTTP integration tests pass |
 | 2. Authentication and application shell | Not started | 1 | — |
 | 3. Upload, extraction, and PII separation | Not started | 1–2 | — |
-| 4. Global schema registry and bounded parsing graph | Not started | 1–3; retention decision before durable source storage | — |
+| 4. Global schema registry and bounded parsing graph | Not started | 1–3 | — |
 | 5. User review and schema-driven editing | Not started | 4 | — |
 | 6. Job-specific tailoring | Not started | 5 | — |
 | 7. On-demand PDF and DOCX export | Not started | 3, 5; 6 for tailored variants | — |
@@ -30,6 +30,10 @@ Implement the upload → parse → user review → tailor → download flow defi
 - After each implementation session, update the status table, task checkboxes, next action, and progress log together. Record changed paths, actual verification results, and any blocker or decision.
 - Mark a milestone `Complete` only when its completion criteria pass. Skill installation, a scaffold, or mocked success alone does not complete an application feature.
 - Keep stable milestone numbers for references. If scope changes, revise pending work and explain the decision without discarding completed evidence.
+
+### Branch and PR workflow
+
+Each milestone uses its own `feat/<feature-name>` branch. Verify changes, update this tracker, push the branch, create and attach a PR, and merge it before starting the next milestone from updated `main`. Record PR URLs and merge evidence in the progress log. Do not bypass failing checks or branch protections.
 
 ## Skills to use during implementation
 
@@ -118,13 +122,13 @@ Completion: instructions and skill routing exist; new skill metadata and local e
 
 Dependencies: milestone 0.
 
-- [ ] Inspect Node/Yarn versions, manifests, lockfiles, and current scripts. Select compatible TypeScript dependencies for configuration, validation, MongoDB, LangChain, and LangGraph; add packages only when their integration is implemented. Record chosen versions and required runtime changes without rewriting unrelated dependencies.
-- [ ] Add validated configuration for MongoDB, sessions, the LiteLLM base URL, credentials, `LITELLM_WORKER_MODEL`, and `LITELLM_JUDGE_MODEL`. Provide a placeholder-only `.env.example`.
-- [ ] Integrate MongoDB and define repositories, indexes, revisions, and atomic publication/approval operations.
-- [ ] Define upload, job-state, review, schema, and judge DTOs. Centralize runtime validation and the exact judge acceptance predicate from `PROJECT.md`.
-- [ ] Choose a supported JSON Schema dialect and a documented subset that both the validator and dynamic editor support. Require the four base sections while allowing source-driven additions; preserve existing fields when extending a schema.
-- [ ] Add injectable adapters for document extraction, LLM calls, and rendering so tests can avoid network services.
-- [ ] Document and verify local MongoDB/test database setup, including replica-set configuration if required by the selected publication strategy.
+- [x] Inspect Node/Yarn versions, manifests, lockfiles, and current scripts. Select compatible TypeScript dependencies for configuration, validation, and MongoDB; defer LangChain/LangGraph package selection to their milestone 4 integration. Record chosen versions and required runtime changes without rewriting unrelated dependencies.
+- [x] Add validated configuration for MongoDB, sessions, the LiteLLM base URL, credentials, `LITELLM_WORKER_MODEL`, and `LITELLM_JUDGE_MODEL`. Provide a placeholder-only `.env.example`.
+- [x] Integrate MongoDB and define repositories, indexes, revisions, and atomic publication/approval operations.
+- [x] Define upload, job-state, review, schema, and judge DTOs. Centralize runtime validation and the exact judge acceptance predicate from `PROJECT.md`.
+- [x] Choose a supported JSON Schema dialect and a documented subset that both the validator and dynamic editor support. Require the four base sections while allowing source-driven additions; preserve existing fields when extending a schema.
+- [x] Add injectable adapters for document extraction, LLM calls, and rendering so tests can avoid network services.
+- [x] Document and verify local MongoDB/test database setup, including replica-set configuration if required by the selected publication strategy.
 
 Completion: startup validates required configuration without exposing secrets; repository integration tests verify ownership fields, unique indexes, revision conflicts, and atomic schema publication. Document any replica-set requirement for transactions.
 
@@ -154,7 +158,7 @@ Completion: each allowed format extracts correctly; boundary-size and misleading
 
 ### 4. Global schema registry and bounded parsing graph
 
-Dependencies: milestones 1–3. Resolve the retention decision below before durable source/checkpoint storage is enabled.
+Dependencies: milestones 1–3. Apply the retention policy below to durable source/checkpoint storage.
 
 - [ ] Integrate LangChain through the configurable LiteLLM adapter. Verify configured model capabilities with a synthetic smoke test; validate outputs locally even when provider structured outputs are available.
 - [ ] Implement LangGraph stages: schema worker → schema judge → publish/reuse schema → mapping worker → mapping judge → save accepted resume, with explicit revision and review branches.
@@ -232,7 +236,7 @@ yarn test:e2e --runInBand
 ## Decisions and implementation gates
 
 - **OCR:** unresolved. The initial path rejects documents with no extractable text and explains why. Add OCR only after a product decision.
-- **Text/draft retention:** unresolved. Before milestone 4 persists redacted source text, checkpoints, or review drafts, agree on retention duration, cleanup triggers, and what happens to expired pending reviews. Continue with interfaces and synthetic/in-memory workflow tests meanwhile; do not interpret an unset duration as permission to retain data indefinitely.
+- **Text/draft retention:** decided by the user: delete temporary parsing data immediately on acceptance; expire unfinished reviews, redacted source text, and checkpoints after 30 days. Expired work requires a fresh upload. Enforce expiration at access time as well as background cleanup.
 - **PII detection:** demonstrate acceptable local extraction/redaction on representative fixtures in milestone 3. If uncertainty cannot be resolved locally, require user correction before the first model call.
 - **Runtime compatibility:** establish DOC parsing and PDF rendering availability during their milestones, and verify the configured proxy models' capabilities without changing their identifiers or exposing credentials.
 
@@ -246,3 +250,5 @@ yarn test:e2e --runInBand
 | Tracker update | Added milestone status, skill mapping, setup completion, and progress-maintenance rules | Local document links and task/status consistency checked | Begin milestone 1: dependency/runtime inspection and configuration |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
+
+| Foundations implementation | Added `src/config`, `src/contracts`, `src/database`, adapter ports, `.env.example`, test database scripts, and `docs/development.md` | Full build; server/client lint; 8 unit tests; 6 HTTP/repository tests against local MongoDB 8.3 replica set | Branch `feat/foundations`; create and merge PR before milestone 2. Retention confirmed: acceptance cleanup and 30-day expiry. |

@@ -1,3 +1,4 @@
+import { AppConfig } from './config/app-config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -8,8 +9,14 @@ async function bootstrap() {
   // client-side routes of the React SPA served from ./client/dist.
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT ?? 3000;
+  app.enableShutdownHooks();
+  const port = app.get(AppConfig).values.PORT;
   await app.listen(port);
   console.log(`Server running on http://localhost:${port}`);
 }
-void bootstrap();
+void bootstrap().catch(() => {
+  console.error(
+    'Application startup failed. Check configuration and service availability.',
+  );
+  process.exitCode = 1;
+});
