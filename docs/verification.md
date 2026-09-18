@@ -7,15 +7,15 @@ The implemented workflow was verified locally with synthetic data. These checks 
 | Backend and frontend builds | Pass |
 | Server ESLint and client Oxlint | Pass |
 | Backend unit tests | 40 pass |
-| MongoDB/HTTP/graph integration tests | 36 pass against an isolated local replica set |
-| React behavior tests | 10 pass |
+| MongoDB/HTTP/graph integration tests | 41 pass against an isolated local replica set |
+| React behavior tests | 11 pass |
 | Real Chromium UI journey | Pass: register, upload DOCX, redact, five-attempt mapping review, approve, edit, tailor, approve variant, download PDF/DOCX, preview PDF, restore session, logout |
 | Browser workflow privacy | 15 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
 | Navigation/accessibility | Upload redirects to activity; notification links, Escape/focus, reload recovery, theme persistence/system changes, keyboard field navigation and 390 px mobile layout checked |
 | Upload formats | Real synthetic PDF, DOCX and legacy DOC fixtures extract; invalid signatures/content, cancellation and size boundaries covered |
 | Exports | PDF Unicode/multipage text and additional sections verified; DOCX contents verified; PDF and LibreOffice-rendered DOCX visually inspected |
 | Retention | Acceptance removes temporary parsing state and PII expiry; cancellation removes draft and PII atomically; unfinished records carry 30-day TTL and expired jobs cannot be opened |
-| Concurrency/recovery | Schema publication races (including fifth attempt), worker leases, consumed interrupted attempts, duplicate completion, stale edits and older-schema preservation covered |
+| Concurrency/recovery | Schema publication races without revalidation, worker leases, consumed interrupted attempts, duplicate completion, stale edits and older-schema preservation covered |
 
 The browser test exercises the production LangChain adapter and LangGraph workflow against a local scripted chat-completions endpoint, not a mocked browser API. It sends actual SSE token chunks, deliberately returns one transient provider failure, and exhausts mapping's five attempts to verify retry/loop status and human review. Schema previews stay empty, incomplete/escaped PII is redacted before progress persistence, cancellation fences streaming writes, cross-user SSE is denied, and revoking a session closes its stream. Tailoring progress disappears on approval; completed parsing links remain usable. The deterministic source and responses contain synthetic details only. Browser screenshots/downloads were generated under `/tmp/cvantage-browser-verification`; they are disposable test artifacts, not persisted application uploads/exports.
 
@@ -34,3 +34,9 @@ Verify the ignored server `.env` against `.env.example`, then run `yarn test:mod
 ## Supplied-schema baseline verification
 
 Startup seeds the exact `schema/schema.json` contents once, including during concurrent first starts. Tests cover retaining approved additions on restart, additive adoption into an existing registry, safe rollback on incompatible legacy types, unchanged historical records, supported nested additions, rejection of replacements and unsupported source evidence, local date-reference validation, and PII separation. The Chromium journey now uses `basics.summary`, `work`, and `skills[].name/keywords`, checks that unchanged coverage creates no new schema version, and exercises both export formats. Old-layout export and tailoring tests remain in place. Verification used a temporary MongoDB instance; application services were not restarted.
+
+## Single-pass schema modification
+
+Schema preparation runs one worker proposal and at most one judge check. Integration regressions verify no second pass after rejection, invalid/PII output, publication conflicts (with or without additions), or interrupted work, including legacy jobs with already-consumed attempts. Mapping still stops after five attempts and can accept on its fifth attempt. Client tests verify a one-attempt preparation limit, hidden schema output, and no promise of another pass after rejection.
+
+The Chromium journey passed with the installed Chrome executable (`BROWSER_EXECUTABLE=/usr/bin/google-chrome`), confirming preparation 1/1 and extraction 5/5 before approval and both exports. Its scripted proxy received 15 redacted requests, including the existing temporary transport-failure check. Artifacts are in `/tmp/cvantage-one-pass-browser`. Temporary test services and the isolated MongoDB instance were stopped after verification.

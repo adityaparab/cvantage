@@ -27,7 +27,7 @@ The backend serves the client and API at `http://localhost:3000`. API routes use
 
 - Upload PDF, DOCX or legacy DOC up to 20,000,000 bytes. Originals are processed in memory and discarded after extraction. Image-only documents need a readable replacement; OCR is not implemented.
 - Enter contact details separately and review the redacted source before any model call. User review is necessary for uncertain names and locations.
-- Schema generation and value mapping each have at most five worker–judge attempts. Schema work stays in the background. Every parsed resume awaits your approval or rejection; accepted resumes keep their extraction version.
+- Schema modification has one worker–judge pass; value mapping has at most five attempts. Schema work stays in the background. Every parsed resume awaits your approval or rejection; accepted resumes keep their extraction version.
 - Edit nested fields, additional sections and separate contact details. Tailoring preserves the source and creates a version for explicit review.
 - Generate PDF/DOCX on demand. Contact details are restored only on the server; files are not retained.
 - Temporary parsing data is deleted on acceptance and expires after 30 days when unfinished. Contact details for abandoned uploads expire as well; accepted records and their contact details remain.

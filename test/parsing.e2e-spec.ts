@@ -160,9 +160,12 @@ describe('durable worker/judge parsing', () => {
       /Synthetic Applicant|applicant@example|555 123|Warsaw/,
     );
   });
-  it.each(['schema', 'mapping'] as const)(
-    'stops after exactly five failed %s iterations',
-    async (stage) => {
+  it.each([
+    { stage: 'schema', limit: 1 },
+    { stage: 'mapping', limit: 5 },
+  ] as const)(
+    'stops after exactly $limit failed $stage iterations',
+    async ({ stage, limit }) => {
       const job = await seed();
       if (stage === 'mapping') {
         generate
@@ -170,7 +173,7 @@ describe('durable worker/judge parsing', () => {
           .mockResolvedValueOnce(judge('schema'));
         await parsing.runNext();
       }
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < limit; i++) {
         generate
           .mockResolvedValueOnce(stage === 'schema' ? { additions: [] } : data)
           .mockResolvedValueOnce(judge(stage, false));
@@ -178,7 +181,7 @@ describe('durable worker/judge parsing', () => {
       }
       expect(await getJob(job)).toMatchObject({
         status: stage === 'schema' ? 'failed' : 'review_required',
-        [`${stage}Iterations`]: 5,
+        [`${stage}Iterations`]: limit,
       });
       const calls = generate.mock.calls.length;
       expect(await parsing.runNext()).toBe(false);
@@ -186,41 +189,80 @@ describe('durable worker/judge parsing', () => {
       expect(await db.db.collection('resumes').countDocuments()).toBe(0);
     },
   );
-  it('accepts on fifth iteration without granting a new budget', async () => {
-    const job = await seed({ schemaIterations: 4 });
+  it('accepts mapping on its fifth iteration without granting a new budget', async () => {
+    const job = await seed({
+      stage: 'mapping',
+      schemaVersion: 1,
+      schemaIterations: 1,
+      mappingIterations: 4,
+    });
     generate
-      .mockResolvedValueOnce({ additions: [] })
-      .mockResolvedValueOnce(judge('schema'));
+      .mockResolvedValueOnce(data)
+      .mockResolvedValueOnce(judge('mapping'));
     await parsing.runNext();
     expect(await getJob(job)).toMatchObject({
-      schemaIterations: 5,
+      schemaIterations: 1,
       stage: 'mapping',
-      mappingIterations: 0,
+      mappingIterations: 5,
+      status: 'review_required',
     });
+    expect(await parsing.runNext()).toBe(false);
+    expect(generate).toHaveBeenCalledTimes(2);
   });
-  it('consumes malformed/contradictory judge iterations and removes PII outputs', async () => {
+  it.each([
+    {
+      label: 'low confidence',
+      result: { ...judge('schema'), confidence: 0.5 },
+    },
+    { label: 'malformed response', result: { verdict: 'accept' } },
+    {
+      label: 'personal output',
+      result: {
+        ...judge('schema'),
+        issues: [
+          {
+            code: 'PII',
+            path: '',
+            message: 'Synthetic Applicant',
+            suggestedFix: 'Remove it',
+          },
+        ],
+      },
+    },
+  ])('stops after one schema pass on $label', async ({ result }) => {
     const job = await seed();
     generate
       .mockResolvedValueOnce({ additions: [] })
-      .mockResolvedValueOnce({ ...judge('schema'), confidence: 0.5 });
-    await parsing.runNext();
-    generate
-      .mockResolvedValueOnce({ additions: [] })
-      .mockResolvedValueOnce({ verdict: 'accept' });
-    await parsing.runNext();
-    generate.mockResolvedValueOnce({
-      ...BASE_RESUME_SCHEMA,
-      title: 'Synthetic Applicant',
-    });
+      .mockResolvedValueOnce(result);
     await parsing.runNext();
     expect(await getJob(job)).toMatchObject({
-      schemaIterations: 3,
-      status: 'queued',
+      schemaIterations: 1,
+      status: 'failed',
     });
+    expect(await parsing.runNext()).toBe(false);
+    expect(generate).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(await getJob(job))).not.toContain(
       'Synthetic Applicant',
     );
     expect(await db.db.collection('schemaVersions').countDocuments()).toBe(1);
+  });
+  it('rejects private schema proposals without judging or replaying them', async () => {
+    const job = await seed();
+    generate.mockResolvedValueOnce({
+      additions: [],
+      title: 'Synthetic Applicant',
+    });
+    await parsing.runNext();
+    expect(await getJob(job)).toMatchObject({
+      schemaIterations: 1,
+      status: 'failed',
+    });
+    expect(await parsing.runNext()).toBe(false);
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(await getJob(job))).not.toContain(
+      'Synthetic Applicant',
+    );
+    expect((await app.get(SchemaRepository).latest())?.version).toBe(1);
   });
   it('publishes only source-grounded additions and maps against the extended baseline', async () => {
     const job = await seed({
@@ -277,7 +319,8 @@ describe('durable worker/judge parsing', () => {
       ],
     });
     await parsing.runNext();
-    expect((await getJob(job))?.status).toBe('queued');
+    expect((await getJob(job))?.status).toBe('failed');
+    expect(await parsing.runNext()).toBe(false);
     expect(generate).toHaveBeenCalledTimes(1);
     expect((await app.get(SchemaRepository).latest())?.version).toBe(1);
   });
@@ -294,20 +337,24 @@ describe('durable worker/judge parsing', () => {
     expect(generate).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(await getJob(job))).not.toContain('private provider');
   });
-  it('recovers an interrupted final attempt without another model call', async () => {
-    const job = await seed({
-      schemaIterations: 5,
-      status: 'schema',
-      leaseUntil: new Date(0),
-      leaseToken: 'abandoned',
-    });
-    await parsing.runNext();
-    expect(await getJob(job)).toMatchObject({
-      status: 'failed',
-      schemaIterations: 5,
-    });
-    expect(generate).not.toHaveBeenCalled();
-  });
+  it.each([1, 4, 5])(
+    'does not replay interrupted or legacy schema work after %s consumed attempts',
+    async (attempts) => {
+      const job = await seed({
+        schemaIterations: attempts,
+        status: 'schema',
+        leaseUntil: new Date(0),
+        leaseToken: 'abandoned',
+      });
+      await parsing.runNext();
+      expect(await getJob(job)).toMatchObject({
+        status: 'failed',
+        schemaIterations: attempts,
+      });
+      expect(await parsing.runNext()).toBe(false);
+      expect(generate).not.toHaveBeenCalled();
+    },
+  );
   it('one lease prevents concurrent workers and cancellation prevents saving', async () => {
     const job = await seed();
     let release!: (value: unknown) => void;
@@ -535,10 +582,12 @@ describe('durable worker/judge parsing', () => {
     ).rejects.toThrow();
     expect(await db.db.collection('variants').countDocuments()).toBe(1);
   });
-  it.each([0, 4])(
-    'publication conflicts keep the existing schema attempt budget (%s previous attempts)',
-    async (previousAttempts) => {
-      const job = await seed({ schemaIterations: previousAttempts });
+  it.each([false, true])(
+    'stops on a publication conflict without another schema pass (additions: %s)',
+    async (hasAdditions) => {
+      const job = await seed({
+        source: 'Software engineer. Managed a team of 6.',
+      });
       const concurrent = {
         ...BASE_RESUME_SCHEMA,
         properties: {
@@ -547,31 +596,33 @@ describe('durable worker/judge parsing', () => {
         },
       };
       generate
-        .mockResolvedValueOnce({ additions: [] })
+        .mockResolvedValueOnce({
+          additions: hasAdditions
+            ? [
+                {
+                  parentPath: '/properties/work/items',
+                  name: 'teamSize',
+                  definition: { type: 'number' },
+                  evidence: 'Managed a team of 6',
+                },
+              ]
+            : [],
+        })
         .mockImplementationOnce(async () => {
           await app.get(SchemaRepository).publish(concurrent, 1);
           return judge('schema');
         });
       await parsing.runNext();
       expect(await getJob(job)).toMatchObject({
-        schemaIterations: previousAttempts + 1,
-        status: previousAttempts === 4 ? 'failed' : 'queued',
-        failureCode: 'SCHEMA_CHANGED_REBASE_REQUIRED',
+        schemaIterations: 1,
+        status: 'failed',
+        failureCode: 'SCHEMA_PUBLICATION_CONFLICT',
       });
-      if (previousAttempts === 0) {
-        generate
-          .mockResolvedValueOnce({ additions: [] })
-          .mockResolvedValueOnce(judge('schema'));
-        await parsing.runNext();
-        expect(await getJob(job)).toMatchObject({
-          schemaIterations: 2,
-          stage: 'mapping',
-          schemaVersion: 2,
-        });
-        expect(generate.mock.calls.at(-2)?.[2]).toMatchObject({
-          latestSchema: { properties: { clearances: { type: 'string' } } },
-        });
-      } else expect(await parsing.runNext()).toBe(false);
+      expect(await parsing.runNext()).toBe(false);
+      expect(generate).toHaveBeenCalledTimes(2);
+      expect((await app.get(SchemaRepository).latest())?.definition).toEqual(
+        concurrent,
+      );
       expect(await db.db.collection('schemaVersions').countDocuments()).toBe(2);
     },
   );

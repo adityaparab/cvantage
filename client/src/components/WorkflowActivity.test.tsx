@@ -49,13 +49,11 @@ it('shows live content, step states, bounded attempts and prior retry history wi
 it('opens an aligned workflow link dropdown and restores focus on Escape', async () => {
   vi.stubGlobal(
     'fetch',
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify([activity]), {
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([activity]), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    ),
   );
   render(
     <MemoryRouter>
@@ -72,4 +70,30 @@ it('opens an aligned workflow link dropdown and restores focus on Escape', async
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(screen.queryByRole('region', { name: 'Active workflows' })).toBeNull();
   expect(document.activeElement).toBe(button);
+});
+it('shows the preparation limit without promising a second pass after rejection', () => {
+  render(
+    <ActivitySteps
+      activity={{
+        ...activity,
+        stage: 'preparation',
+        status: 'failed',
+        steps: [
+          {
+            step: 'preparation_judge',
+            attempt: 1,
+            retries: 0,
+            status: 'failure',
+            received: 10,
+            output: 'Internal schema output',
+            outcome: 'revision_requested',
+          },
+        ],
+      }}
+    />,
+  );
+  expect(screen.getByText(/Attempt 1 of 1/)).toBeTruthy();
+  expect(screen.getByText(/attempt limit reached/)).toBeTruthy();
+  expect(screen.queryByText(/another loop attempt/)).toBeNull();
+  expect(screen.queryByText(/Internal schema output/)).toBeNull();
 });

@@ -52,7 +52,7 @@ Run `yarn build`, `yarn lint`, `yarn --cwd client lint`, `yarn test --runInBand`
 
 ## Persistence contracts
 
-Schema publication uses a MongoDB transaction to insert an immutable version and advance the registry together. Conflicting publishers must revalidate against the new version. Accepted records retain their extraction schema version. Resume updates compare owner and revision; a stale write cannot overwrite user corrections.
+Schema publication uses a MongoDB transaction to insert an immutable version and advance the registry together. A conflicting schema publisher fails preparation without retrying or overwriting the winning version. Accepted records retain their extraction schema version. Resume updates compare owner and revision; a stale write cannot overwrite user corrections.
 
 Parsing acceptance inserts the accepted resume and deletes its temporary parsing record in one transaction. Job expiry uses `expiresAt` with a TTL index; callers must also reject expired jobs because background TTL deletion is asynchronous. Acceptance and review services must perform runtime structure and PII validation before repository writes.
 
@@ -76,7 +76,7 @@ Original bytes remain in memory and are cleared after extraction; originals are 
 
 ## Durable parsing
 
-A single background scheduler claims jobs with three-minute MongoDB leases. Each graph invocation runs worker → judge → decision for one reserved iteration. MongoDB job snapshots are the recovery checkpoints; there is no second graph-history collection. Counters are persisted before calls, so crashes consume ambiguous attempts and cannot reset budgets. Reclaimed jobs resume from the stored stage. Both stages stop at five attempts. Schema conflicts re-evaluate against the new latest schema within that budget. Acceptance atomically deletes the entire temporary snapshot; TTL and access-time checks enforce 30-day expiry. Cancellation deletes the job and fences further writes.
+A single background scheduler claims jobs with three-minute MongoDB leases. Each graph invocation runs worker → judge → decision for one reserved iteration. MongoDB job snapshots are the recovery checkpoints; there is no second graph-history collection. Counters are persisted before calls, so crashes consume ambiguous attempts and cannot reset budgets. Reclaimed jobs resume from the stored stage. Schema modification has one worker proposal and at most one judge check; rejection, invalid output, interruption or publication conflict stops preparation without another pass. Previously queued schema jobs with a consumed attempt also stop on recovery. Mapping retains its five-attempt budget. Acceptance atomically deletes the entire temporary snapshot; TTL and access-time checks enforce 30-day expiry. Cancellation deletes the job and fences further writes.
 
 Model calls use the configured LiteLLM chat-completions endpoint with no tools, a 12,000 output-token cap, a 20-second request timeout and a 65-second overall call deadline. Answer text streams through LangChain. Transient HTTP/network failures retry at most twice, with visible retry counts; authentication, validation and cancelled-progress failures do not retry. Retries stay inside the same graph iteration. Malformed JSON is a failed iteration; provider errors produce a visible failed job for user review. Ambient LangSmith/LangChain tracing and verbose model logs are disabled to prevent exporting resume content. Worker proposals and judge feedback are screened before storage or reuse.
 

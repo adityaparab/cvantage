@@ -17,7 +17,7 @@ import { SchemaRepository } from '../database/schema.repository';
 import { ResumeRepository } from '../database/resume.repository';
 import type { ParseJob, PiiRecord } from '../database/records';
 import {
-  MAX_STAGE_ITERATIONS,
+  STAGE_ITERATION_LIMITS,
   validateResumeData,
 } from '../contracts/resume-schema';
 import type { ResumeSchema } from '../contracts/resume-schema';
@@ -134,7 +134,8 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
     }
     const counter =
       job.stage === 'schema' ? 'schemaIterations' : 'mappingIterations';
-    if (job[counter] >= MAX_STAGE_ITERATIONS) {
+    const limit = STAGE_ITERATION_LIMITS[job.stage];
+    if (job[counter] >= limit) {
       await this.checkpoint(job, {
         status: job.stage === 'schema' ? 'failed' : 'review_required',
         failureCode: 'ITERATIONS_EXHAUSTED',
@@ -225,7 +226,7 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
           await this.checkpoint(job, {
             activity: job.activity,
             status:
-              job[counter] >= MAX_STAGE_ITERATIONS
+              job[counter] >= limit
                 ? job.stage === 'schema'
                   ? 'failed'
                   : 'review_required'
@@ -314,9 +315,8 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
       } catch (error) {
         if (!(error instanceof ConflictException)) throw error;
         await this.checkpoint(job, {
-          status:
-            job.schemaIterations >= MAX_STAGE_ITERATIONS ? 'failed' : 'queued',
-          failureCode: 'SCHEMA_CHANGED_REBASE_REQUIRED',
+          status: 'failed',
+          failureCode: 'SCHEMA_PUBLICATION_CONFLICT',
         });
       }
       return;

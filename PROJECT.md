@@ -75,7 +75,7 @@ Delete redacted source text, workflow checkpoints, and review drafts when parsin
 - Add a field/category only when it is present in the resume and cannot already be represented in existing fields. Skill category names are ordinary data values; they do not require new schema fields. Empty additions reuse the current version.
 - Preserve every field from the supplied file, including optional/contact definitions. Omit actual `basics.name/email/phone/location` values from extracted resume data and keep them in the separate PII record. Do not extract tooling metadata (`$schema`/`meta`) as resume content.
 - Give the judge the redacted source and proposed schema. Evaluate coverage, required sections, appropriate types, and structural validity.
-- If rejected, return actionable feedback to the worker and repeat. Stop on acceptance or after **five worker–judge iterations total**, including the initial attempt.
+- Run **one worker–judge pass total** for schema modification: one proposal and at most one judge check. Keep application-side structural, source-evidence and PII checks. Do not run a correction/revalidation loop; rejection or invalid output fails preparation.
 - Persist an approved schema as described below. An unapproved candidate must not become the latest schema.
 
 ### 3. Map and validate resume values
@@ -88,7 +88,7 @@ Delete redacted source text, workflow checkpoints, and review drafts when parsin
 
 ### 4. Handle review and failure
 
-- If schema preparation remains rejected after its fifth iteration, show a processing failure and offer cancellation/new upload without exposing schema definitions. If mapping remains rejected, present the parsed resume for user review. Never silently restart an exhausted loop.
+- If schema preparation is rejected after its single pass, show a processing failure and offer cancellation/new upload without exposing schema definitions. If mapping remains rejected, present the parsed resume for user review. Never silently restart an exhausted loop.
 - Record confidence and unresolved issues separately from review status. A confidence score alone must not imply approval.
 - The user reviews only parsed resume content. Schema extraction, creation, validation, publication, and updates run silently in the background. Never show a schema or ask the user to approve/edit one, including on failure. Every parsed resume requires explicit approval or rejection.
 - User approval may resolve extraction uncertainty, but cannot bypass schema validity or PII checks. Record user approval separately from judge acceptance; do not change the judge's confidence score to imply certainty.
@@ -114,7 +114,7 @@ Acceptance rubric:
 - **Privacy:** no PII remains in the output, examples, or feedback.
 - **Confidence:** `0.90–1.00` is eligible for acceptance; `0.70–<0.90` requires revision for unresolved uncertainty; `<0.70` indicates substantial uncertainty and requires revision. These thresholds are initial product policy, to be evaluated against representative resumes.
 
-The judge gate passes only when the response is valid, `verdict` is `accept`, all four checks are true, `confidence >= 0.90`, `issues` is empty, and application-side schema and PII checks pass. Otherwise, feed actionable issues back to the worker within the existing iteration budget. A malformed or contradictory judge response is a failed iteration, never an implicit acceptance. Parsed-resume review is always required regardless of confidence; exhausted schema preparation is a processing failure.
+The judge gate passes only when the response is valid, `verdict` is `accept`, all four checks are true, `confidence >= 0.90`, `issues` is empty, and application-side schema and PII checks pass. Otherwise, fail schema preparation after its single pass; for mapping, feed actionable issues back to the worker within its five-attempt budget. A malformed or contradictory judge response is a failed iteration, never an implicit acceptance. Parsed-resume review is always required regardless of confidence; exhausted schema preparation is a processing failure.
 
 ## Schema versioning
 
@@ -122,7 +122,7 @@ The judge gate passes only when the response is valid, `verdict` is `accept`, al
 - Reuse the existing version if no schema change is needed.
 - Use the latest approved global version for new extractions, and keep that version fixed through each mapping–validation loop.
 - Every parsed resume records the schema version used for extraction. Schema updates do not modify or migrate existing records. Read, edit, tailor, and export existing records using their recorded version.
-- Publish approved versions atomically. If another workflow publishes first, rebase the proposed additions onto the new latest schema and validate again within the remaining schema iteration budget. Never lose fields, overwrite a published version, or restart the iteration budget because of a conflict; report unresolved preparation conflicts as a processing failure without showing a schema.
+- Publish approved versions atomically. If another workflow publishes first, report a processing failure without showing a schema or running another modification/validation pass. Never lose fields, overwrite a published version, or restart the single-pass budget because of a conflict. Interrupted or already-consumed schema passes must not be replayed after restart.
 
 ## Editing, tailoring, and download
 
@@ -138,7 +138,7 @@ When implementing the relevant feature, verify these observable outcomes:
 
 - A user can register, log in, upload a resume, review extracted fields, provide a job description, and download a tailored result.
 - Worker and judge receive redacted inputs; persisted parsed resume data excludes PII.
-- Both stages stop early on acceptance and never exceed five worker–judge iterations each.
+- Schema modification runs once, with at most one judge check. Mapping stops early on acceptance and never exceeds five worker–judge iterations.
 - Exhausted schema validation reports a processing failure; exhausted mapping allows parsed-resume review. No parsed resume is saved without explicit user approval.
 - The supplied baseline is present on first startup; empty additions create no version. Source-supported new fields create an additive version with all previous fields preserved.
 - Every parsed field can be edited, and saved user corrections remain authoritative.
