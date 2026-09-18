@@ -114,7 +114,7 @@ describe('durable worker/judge parsing', () => {
   }
   const getJob = (job: ParseJob) =>
     db.db.collection<ParseJob>('parseJobs').findOne({ _id: job._id });
-  it('accepts early, pins schema, deletes all temporary state and does not reprocess completion', async () => {
+  it('requires user approval after judge acceptance, then removes temporary state', async () => {
     const job = await seed();
     generate
       .mockResolvedValueOnce(BASE_RESUME_SCHEMA)
@@ -124,6 +124,20 @@ describe('durable worker/judge parsing', () => {
     expect(await parsing.runNext()).toBe(true);
     expect((await getJob(job))?.schemaIterations).toBe(1);
     await parsing.runNext();
+    const pending = await getJob(job);
+    expect(pending).toMatchObject({
+      status: 'review_required',
+      stage: 'mapping',
+      candidate: data,
+    });
+    expect(await db.db.collection('resumes').countDocuments()).toBe(0);
+    expect(await parsing.runNext()).toBe(false);
+    await app.get(EditingService).approve(job.ownerId, job._id, {
+      revision: pending!.revision,
+      stage: 'mapping',
+      candidate: data,
+      approve: true,
+    });
     expect(await getJob(job)).toBeNull();
     expect(await parsing.runNext()).toBe(false);
     const record = await db.db
@@ -132,7 +146,7 @@ describe('durable worker/judge parsing', () => {
     expect(record).toMatchObject({
       data,
       schemaVersion: 1,
-      acceptanceSource: 'judge',
+      acceptanceSource: 'user',
     });
     expect(generate).toHaveBeenCalledTimes(4);
     expect(
@@ -159,7 +173,7 @@ describe('durable worker/judge parsing', () => {
         await parsing.runNext();
       }
       expect(await getJob(job)).toMatchObject({
-        status: 'review_required',
+        status: stage === 'schema' ? 'failed' : 'review_required',
         [`${stage}Iterations`]: 5,
       });
       const calls = generate.mock.calls.length;
@@ -226,7 +240,7 @@ describe('durable worker/judge parsing', () => {
     });
     await parsing.runNext();
     expect(await getJob(job)).toMatchObject({
-      status: 'review_required',
+      status: 'failed',
       schemaIterations: 5,
     });
     expect(generate).not.toHaveBeenCalled();
@@ -257,29 +271,19 @@ describe('durable worker/judge parsing', () => {
     expect(await getJob(job)).toBeNull();
     expect(await db.db.collection('resumes').countDocuments()).toBe(0);
   });
-  it('user schema approval is atomic and continues mapping without resetting schema attempts', async () => {
-    const job = await seed({ schemaIterations: 5, status: 'review_required' });
-    const edit = app.get(EditingService);
-    await expect(
-      edit.approve(job.ownerId, job._id, {
-        revision: 0,
-        stage: 'schema',
-        candidate: {},
-        approve: true,
-      }),
-    ).rejects.toThrow();
-    await edit.approve(job.ownerId, job._id, {
-      revision: 0,
-      stage: 'schema',
-      candidate: BASE_RESUME_SCHEMA,
-      approve: true,
-    });
-    expect(await getJob(job)).toMatchObject({
-      stage: 'mapping',
+  it('hides schema drafts and rejects user schema approval, including legacy review jobs', async () => {
+    const job = await seed({
       schemaIterations: 5,
-      mappingIterations: 0,
-      schemaApprovalSource: 'user',
+      status: 'review_required',
+      candidate: BASE_RESUME_SCHEMA,
+      judge: judge('schema'),
     });
+    const edit = app.get(EditingService);
+    const visible = await edit.review(job.ownerId, job._id);
+    expect(visible).not.toHaveProperty('schema');
+    expect(visible.job).not.toHaveProperty('candidate');
+    expect(visible.job).not.toHaveProperty('judge');
+    await expect(edit.review('another-owner', job._id)).rejects.toThrow();
     await expect(
       edit.approve(job.ownerId, job._id, {
         revision: 0,
@@ -288,7 +292,8 @@ describe('durable worker/judge parsing', () => {
         approve: true,
       }),
     ).rejects.toThrow();
-    expect(await db.db.collection('schemaVersions').countDocuments()).toBe(1);
+    expect(await db.db.collection('schemaVersions').countDocuments()).toBe(0);
+    expect((await getJob(job))?.stage).toBe('schema');
   });
   it('mapping approval enforces privacy, records user decision, and old-schema edits preserve corrections', async () => {
     const schemas = app.get(SchemaRepository);
@@ -373,6 +378,12 @@ describe('durable worker/judge parsing', () => {
     await parsing.runNext();
     await parsing.runNext();
     const edit = app.get(EditingService);
+    await edit.approve(job.ownerId, job._id, {
+      revision: (await getJob(job))!.revision,
+      stage: 'mapping',
+      candidate: data,
+      approve: true,
+    });
     const changed = {
       ...data,
       professionalSummary: 'User corrected software developer',
@@ -481,7 +492,7 @@ describe('durable worker/judge parsing', () => {
       await parsing.runNext();
       expect(await getJob(job)).toMatchObject({
         schemaIterations: previousAttempts + 1,
-        status: previousAttempts === 4 ? 'review_required' : 'queued',
+        status: previousAttempts === 4 ? 'failed' : 'queued',
         failureCode: 'SCHEMA_CHANGED_REBASE_REQUIRED',
       });
       if (previousAttempts === 0) {

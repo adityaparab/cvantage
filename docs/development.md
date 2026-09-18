@@ -80,7 +80,7 @@ Run `yarn build:server && node scripts/smoke-models.cjs` after configuring `.env
 
 ## Review and editing
 
-Failed/exhausted jobs pause in application-owned MongoDB state. User approval validates schema/data and PII again, records the approval source separately, and continues only the next stage without resetting counters. Schema publication and the review transition share one transaction. Recursive editors support all schema field types; published field types remain locked in schema review. Existing resumes always edit against their recorded version. Contact updates compare both contact and resume revisions, so they cannot authorize an accidental overwrite of a newer resume edit.
+Schema generation, validation and publication are internal background operations. Exhausted schema preparation reports a processing failure without returning proposals or schema judge output to the review API. There is no user schema approval endpoint. Every mapped resume, including one accepted by the judge, waits for explicit user approval or rejection. Approval validates content/PII and atomically saves the resume and deletes temporary state; rejection deletes the draft. Existing resumes edit against their recorded version. Contact updates compare contact and resume revisions.
 
 ## Tailoring
 

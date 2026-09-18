@@ -30,6 +30,7 @@ import {
 } from '../contracts/resume-schema';
 import type { PiiRecord, ParseJob } from '../database/records';
 import { NotFoundException } from '@nestjs/common';
+import { publicJob } from '../parsing/job-view';
 @Controller()
 @UseGuards(SessionGuard)
 export class UploadsController {
@@ -177,7 +178,7 @@ export class UploadsController {
       );
     if (!result)
       throw new ConflictException('Review changed; reload before confirming');
-    return result;
+    return publicJob(result);
   }
   @Post('parsing-jobs/:id/cancel')
   async cancel(@Req() request: AuthRequest, @Param('id') id: string) {
@@ -240,6 +241,6 @@ export class UploadsController {
       throw new NotFoundException(
         'Parsing job expired or not found; upload again',
       );
-    return job;
+    return publicJob(job);
   }
 }

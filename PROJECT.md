@@ -19,7 +19,7 @@ The currently specified flow is:
 1. Register and log in using email and password.
 2. Upload a resume.
 3. Extract structured resume data through a worker–judge workflow.
-4. Review and edit the parsed resume in a form.
+4. Approve or reject the parsed resume, then edit saved resumes in a form.
 5. Provide a job description and generate a tailored resume.
 6. Download the adjusted resume and apply manually.
 
@@ -81,14 +81,14 @@ Delete redacted source text, workflow checkpoints, and review drafts when parsin
 - Give the worker the redacted text and latest approved schema to map source values into the schema.
 - Give the judge the same source, schema, and worker output. Check schema conformance, completeness, and fidelity to the source.
 - Return rejection feedback to the worker and repeat, stopping on acceptance or after **five worker–judge iterations total** for this stage.
-- If accepted by the judge or approved through human review, save the parsed resume without PII.
+- Judge acceptance prepares a draft for user review. Save the parsed resume without PII only after the user explicitly approves it; rejection deletes the draft.
 - Present accepted data in an editable form. User corrections take precedence over generated values and must survive subsequent processing.
 
 ### 4. Handle review and failure
 
-- If either stage remains rejected after its fifth iteration, mark it as requiring human review. Do not report success or silently restart the loop.
+- If schema preparation remains rejected after its fifth iteration, show a processing failure and offer cancellation/new upload without exposing schema definitions. If mapping remains rejected, present the parsed resume for user review. Never silently restart an exhausted loop.
 - Record confidence and unresolved issues separately from review status. A confidence score alone must not imply approval.
-- The user performs human review. Present the redacted candidate and actionable issues in an editable review form, separate from accepted data. For a schema failure, let the user resolve field definitions before mapping begins.
+- The user reviews only parsed resume content. Schema extraction, creation, validation, publication, and updates run silently in the background. Never show a schema or ask the user to approve/edit one, including on failure. Every parsed resume requires explicit approval or rejection.
 - User approval may resolve extraction uncertainty, but cannot bypass schema validity or PII checks. Record user approval separately from judge acceptance; do not change the judge's confidence score to imply certainty.
 - Invalid model output must not be accepted as valid data. Provider errors should surface clearly; any transport retry policy must be bounded separately from the worker–judge iteration limits.
 
@@ -112,7 +112,7 @@ Acceptance rubric:
 - **Privacy:** no PII remains in the output, examples, or feedback.
 - **Confidence:** `0.90–1.00` is eligible for acceptance; `0.70–<0.90` requires revision for unresolved uncertainty; `<0.70` indicates substantial uncertainty and requires revision. These thresholds are initial product policy, to be evaluated against representative resumes.
 
-The application accepts automatically only when the response is valid, `verdict` is `accept`, all four checks are true, `confidence >= 0.90`, `issues` is empty, and application-side schema and PII checks pass. Otherwise, feed actionable issues back to the worker within the existing iteration budget. A malformed or contradictory judge response is a failed iteration, never an implicit acceptance. User review is required after the fifth failed iteration regardless of confidence.
+The judge gate passes only when the response is valid, `verdict` is `accept`, all four checks are true, `confidence >= 0.90`, `issues` is empty, and application-side schema and PII checks pass. Otherwise, feed actionable issues back to the worker within the existing iteration budget. A malformed or contradictory judge response is a failed iteration, never an implicit acceptance. Parsed-resume review is always required regardless of confidence; exhausted schema preparation is a processing failure.
 
 ## Schema versioning
 
@@ -120,7 +120,7 @@ The application accepts automatically only when the response is valid, `verdict`
 - Reuse the existing version if no schema change is needed.
 - Use the latest approved global version for new extractions, and keep that version fixed through each mapping–validation loop.
 - Every parsed resume records the schema version used for extraction. Schema updates do not modify or migrate existing records. Read, edit, tailor, and export existing records using their recorded version.
-- Publish approved versions atomically. If another workflow publishes first, rebase the proposed additions onto the new latest schema and validate again within the remaining schema iteration budget. Never lose fields, overwrite a published version, or restart the iteration budget because of a conflict; route unresolved conflicts to review.
+- Publish approved versions atomically. If another workflow publishes first, rebase the proposed additions onto the new latest schema and validate again within the remaining schema iteration budget. Never lose fields, overwrite a published version, or restart the iteration budget because of a conflict; report unresolved preparation conflicts as a processing failure without showing a schema.
 
 ## Editing, tailoring, and download
 
@@ -137,7 +137,7 @@ When implementing the relevant feature, verify these observable outcomes:
 - A user can register, log in, upload a resume, review extracted fields, provide a job description, and download a tailored result.
 - Worker and judge receive redacted inputs; persisted parsed resume data excludes PII.
 - Both stages stop early on acceptance and never exceed five worker–judge iterations each.
-- Exhausted validation routes to human review and cannot silently produce an accepted result.
+- Exhausted schema validation reports a processing failure; exhausted mapping allows parsed-resume review. No parsed resume is saved without explicit user approval.
 - Required sections and additional source fields are represented; schema additions create a new version.
 - Every parsed field can be edited, and saved user corrections remain authoritative.
 - Tailoring preserves factual accuracy and uses the corrected resume.
@@ -146,6 +146,14 @@ When implementing the relevant feature, verify these observable outcomes:
 - PII is stored separately, remains editable, and is restored during export without entering LLM inputs.
 - Global schema publication preserves prior versions; existing resume records retain their extraction version and are not migrated.
 - Judge contract violations and failed acceptance checks cannot produce automatic acceptance; the user can resolve review issues without bypassing structural or PII validation.
+
+## Appearance and workflow activity
+
+- Offer Light, Dark, and System appearance; System is the default and follows live operating-system changes. Remember an explicit choice across reloads.
+- A successful upload navigates to a dedicated activity URL. Keep the pre-model privacy confirmation there, before sending redacted source to a model.
+- Display every workflow step with inactive, active, success, or failure indicators, iteration counts, revision loops, and transport retry status. Stream model output and status as work happens; output is provisional until validated.
+- Schema definitions and schema-related model output remain internal. Those steps stream progress metadata only. Visible resume/judge output must exclude PII, provider secrets, and hidden reasoning.
+- A notification button in the top navigation lists active workflows and work awaiting user action. Each aligned dropdown row links to its activity screen and updates as work progresses. Handle empty, loading, disconnected, and failure states; preserve keyboard and mobile usability.
 
 ## Open product decisions
 

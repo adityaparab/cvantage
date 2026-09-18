@@ -40,7 +40,7 @@ export type JobStatus = z.infer<typeof jobStatusSchema>;
 export const reviewSchema = z
   .object({
     revision: z.number().int().min(0),
-    stage: z.enum(['schema', 'mapping']),
+    stage: z.literal('mapping'),
     candidate: z.unknown(),
     approve: z.boolean(),
   })
