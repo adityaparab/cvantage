@@ -1,3 +1,4 @@
+import UploadResume from './components/UploadResume'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api, ApiError, setCsrfToken } from './lib/api'
@@ -44,7 +45,7 @@ export default function App() {
     <main>
       {!ready ? <p role="status">Loading your workspace…</p> : user ? <>
         <p className="eyebrow">YOUR WORKSPACE</p><h1>Your next chapter starts here.</h1><p className="muted">Signed in as {user.email}</p>
-        <section className="panel"><h2>Your resumes</h2>{resumes.length ? <ul>{resumes.map((resume) => <li key={resume._id}>Resume · schema v{resume.schemaVersion} · {new Date(resume.updatedAt).toLocaleDateString()}</li>)}</ul> : <p className="muted">No resumes yet. Your saved resumes will appear here.</p>}</section>
+        <UploadResume /><section className="panel"><h2>Your resumes</h2>{resumes.length ? <ul>{resumes.map((resume) => <li key={resume._id}>Resume · schema v{resume.schemaVersion} · {new Date(resume.updatedAt).toLocaleDateString()}</li>)}</ul> : <p className="muted">No resumes yet. Your saved resumes will appear here.</p>}</section>
       </> : <section className="auth-layout"><div><p className="eyebrow">A CLEARER WAY FORWARD</p><h1>Your experience.<br/>The right words.</h1><p className="intro">Build a resume that reflects your experience and speaks to your next opportunity.</p></div>
         <form className="panel" onSubmit={(event) => void authenticate(event)}><h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
           <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} /></label>
