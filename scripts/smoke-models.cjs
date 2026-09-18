@@ -9,12 +9,12 @@ const {
 } = require('../dist/ai/prompts');
 const {
   BASE_RESUME_SCHEMA,
-  parseResumeSchema,
   validateResumeData,
   preservesFields,
 } = require('../dist/contracts/resume-schema');
 const { acceptsJudge } = require('../dist/contracts/workflow');
-const { containsPii } = require('../dist/documents/pii');
+const { containsPii, redactPii } = require('../dist/documents/pii');
+const { applySchemaAdditions } = require('../dist/contracts/schema-additions');
 async function main() {
   const model = new LiteLlmGateway(new AppConfig(new ConfigService()));
   const pii = {
@@ -25,18 +25,22 @@ async function main() {
   };
   const source =
     'Software engineer. Example Labs, Developer, 2020 to 2024. Built internal tools with TypeScript, React and MongoDB. Education: Bachelor of Computer Science, Example University, 2019.';
-  const schema = parseResumeSchema(
+  const safeSchema = (value) =>
+    JSON.parse(redactPii(JSON.stringify(value), pii));
+  const schema = applySchemaAdditions(
+    BASE_RESUME_SCHEMA,
     await model.generate('worker', SCHEMA_PROMPT, {
       source,
-      latestSchema: BASE_RESUME_SCHEMA,
+      latestSchema: safeSchema(BASE_RESUME_SCHEMA),
     }),
+    source,
+    pii,
   );
-  if (containsPii(schema, pii)) throw new Error();
   const schemaJudge = await model.generate('judge', JUDGE_PROMPT, {
     stage: 'schema',
     source,
-    latestSchema: BASE_RESUME_SCHEMA,
-    candidate: schema,
+    latestSchema: safeSchema(BASE_RESUME_SCHEMA),
+    candidate: safeSchema(schema),
   });
   if (
     !acceptsJudge(schemaJudge, 'schema', {
@@ -47,13 +51,13 @@ async function main() {
     throw new Error();
   const data = await model.generate('worker', MAPPING_PROMPT, {
     source,
-    schema,
+    schema: safeSchema(schema),
   });
   if (containsPii(data, pii)) throw new Error();
   const mappingJudge = await model.generate('judge', JUDGE_PROMPT, {
     stage: 'mapping',
     source,
-    schema,
+    schema: safeSchema(schema),
     candidate: data,
   });
   if (

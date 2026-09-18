@@ -64,14 +64,16 @@ Delete redacted source text, workflow checkpoints, and review drafts when parsin
 
 - Read the uploaded resume and extract its text.
 - Redact personally identifiable information (PII) before sending text to either worker or judge.
-- Keep PII out of schema definitions and persisted parsed resume data. Authentication data is separate from parsed resume data.
+- Keep PII values out of model-generated schema additions and parsed resume data. The supplied baseline retains its contact-field definitions, but actual contact values remain in the separate PII record. Authentication data is separate.
 - Preserve enough non-PII information for accurate extraction, following the PII policy above.
 
 ### 2. Generate and validate the schema
 
-- Give the worker the redacted text and, when available, the latest approved schema.
-- Require these sections: `basics` (non-PII professional information), `professionalSummary`, `workExperience`, and `skills` grouped by category.
-- Include additional fields found in the resume when the schema does not already represent them. Do not add speculative fields.
+- Seed [schema/schema.json](schema/schema.json) into MongoDB on first server startup. It is the authoritative baseline and is never rewritten by a model.
+- Always use the latest approved global extension of this baseline. Use its field layout, including `basics.summary`, `work`, and categorized `skills` using `name`, `level`, and `keywords`; do not regenerate a replacement schema.
+- The worker proposes only missing properties, with their parent object path, field definition and an exact supporting source excerpt. The server merges additions; existing fields, types, metadata, validation rules and required lists cannot be removed or changed by a model.
+- Add a field/category only when it is present in the resume and cannot already be represented in existing fields. Skill category names are ordinary data values; they do not require new schema fields. Empty additions reuse the current version.
+- Preserve every field from the supplied file, including optional/contact definitions. Omit actual `basics.name/email/phone/location` values from extracted resume data and keep them in the separate PII record. Do not extract tooling metadata (`$schema`/`meta`) as resume content.
 - Give the judge the redacted source and proposed schema. Evaluate coverage, required sections, appropriate types, and structural validity.
 - If rejected, return actionable feedback to the worker and repeat. Stop on acceptance or after **five worker–judge iterations total**, including the initial attempt.
 - Persist an approved schema as described below. An unapproved candidate must not become the latest schema.
@@ -116,7 +118,7 @@ The judge gate passes only when the response is valid, `verdict` is `accept`, al
 
 ## Schema versioning
 
-- Schemas are global across users and resumes. Persist versioned definitions in MongoDB. Adding a field creates a new version; do not overwrite an existing version.
+- Schemas are global across users and resumes. Seed the supplied file transactionally and idempotently before processing starts; repeated or concurrent startup must not duplicate/reset it. Existing registries gain missing baseline fields in a new immutable version while keeping existing fields/constraints; incompatible shared types fail initialization without rewriting records. Persist versioned definitions in MongoDB. Adding a field creates a new version; do not overwrite an existing version.
 - Reuse the existing version if no schema change is needed.
 - Use the latest approved global version for new extractions, and keep that version fixed through each mapping–validation loop.
 - Every parsed resume records the schema version used for extraction. Schema updates do not modify or migrate existing records. Read, edit, tailor, and export existing records using their recorded version.
@@ -138,7 +140,7 @@ When implementing the relevant feature, verify these observable outcomes:
 - Worker and judge receive redacted inputs; persisted parsed resume data excludes PII.
 - Both stages stop early on acceptance and never exceed five worker–judge iterations each.
 - Exhausted schema validation reports a processing failure; exhausted mapping allows parsed-resume review. No parsed resume is saved without explicit user approval.
-- Required sections and additional source fields are represented; schema additions create a new version.
+- The supplied baseline is present on first startup; empty additions create no version. Source-supported new fields create an additive version with all previous fields preserved.
 - Every parsed field can be edited, and saved user corrections remain authoritative.
 - Tailoring preserves factual accuracy and uses the corrected resume.
 - PDF, DOCX, and DOC uploads within 20 MB are accepted; unsupported and oversized files are rejected.

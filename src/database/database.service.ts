@@ -1,3 +1,4 @@
+import { seedBaseSchema } from './schema-storage';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
   MongoClient,
@@ -36,10 +37,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         );
       }
       await this.createIndexes();
+      await this.seedSchema();
     } catch (error) {
       await this.client.close();
       throw databaseStartupError(error);
     }
+  }
+  async seedSchema() {
+    await seedBaseSchema(this.client, this.db);
   }
   async createIndexes() {
     await Promise.all([

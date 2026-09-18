@@ -28,6 +28,33 @@ it('edits nested arrays and newly discovered fields', () => {
   expect(change).toHaveBeenCalledWith({ education: [{ degree: 'Corrected' }] });
   fireEvent.click(screen.getByText('Add education'));
   expect(change).toHaveBeenCalledWith({
-    education: [{ degree: 'Original' }, { degree: '' }],
+    education: [{ degree: 'Original' }, {}],
+  });
+});
+
+it('omits cleared optional fields instead of saving invalid blank dates or URLs', () => {
+  const change = vi.fn();
+  render(
+    <ResumeFields
+      schema={{
+        type: 'object',
+        properties: {
+          startDate: { type: 'string' },
+          summary: { type: 'string' },
+        },
+        required: ['summary'],
+      }}
+      value={{ startDate: '2024-02', summary: 'Engineer' }}
+      onChange={change}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Start Date'), {
+    target: { value: '' },
+  });
+  expect(change).toHaveBeenLastCalledWith({ summary: 'Engineer' });
+  fireEvent.change(screen.getByLabelText('Summary'), { target: { value: '' } });
+  expect(change).toHaveBeenLastCalledWith({
+    startDate: '2024-02',
+    summary: '',
   });
 });

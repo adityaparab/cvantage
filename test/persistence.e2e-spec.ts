@@ -41,11 +41,11 @@ describe('MongoDB persistence boundaries', () => {
     ).rejects.toMatchObject({ code: 11000 });
   });
   it('publishes immutable schema versions and resolves concurrent writes atomically', async () => {
-    const first = await schemas.publish(BASE_RESUME_SCHEMA, 0);
+    const first = (await schemas.latest())!;
     expect(first.version).toBe(1);
     expect((await schemas.publish(BASE_RESUME_SCHEMA, 1)).version).toBe(1);
     const next = structuredClone(BASE_RESUME_SCHEMA);
-    next.properties!.education = { type: 'array', items: { type: 'string' } };
+    next.properties!.clearances = { type: 'array', items: { type: 'string' } };
     const race = await Promise.allSettled([
       schemas.publish(next, 1),
       schemas.publish(next, 1),

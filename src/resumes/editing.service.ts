@@ -9,7 +9,7 @@ import { DatabaseService } from '../database/database.service';
 import { ResumeRepository } from '../database/resume.repository';
 import { SchemaRepository } from '../database/schema.repository';
 import type { ParseJob, PiiRecord, ResumeRecord } from '../database/records';
-import { validateResumeData } from '../contracts/resume-schema';
+import { validateResumeData, editorSchema } from '../contracts/resume-schema';
 import { reviewSchema } from '../contracts/workflow';
 import { containsPii, piiSchema } from '../documents/pii';
 import { publicJob } from '../parsing/job-view';
@@ -100,7 +100,7 @@ export class EditingService {
     if (job.stage === 'schema') return { job: publicJob(job) };
     const schema = await this.schemas.get(job.schemaVersion ?? 0);
     if (!schema) throw new NotFoundException('Resume fields are unavailable');
-    return { job: publicJob(job), schema: schema.definition };
+    return { job: publicJob(job), schema: editorSchema(schema.definition) };
   }
 
   async approve(ownerId: string, id: string, input: unknown) {
@@ -123,7 +123,8 @@ export class EditingService {
       throw new BadRequestException(
         'Remove identifying details before approval',
       );
-    if (!schema || !validateResumeData(schema, candidate))
+    const pinned = await this.schemas.get(job.schemaVersion!);
+    if (!schema || !pinned || !validateResumeData(pinned.definition, candidate))
       throw new BadRequestException('Check required fields and field types');
     await this.resumes.accept(
       {

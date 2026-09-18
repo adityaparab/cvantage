@@ -26,7 +26,12 @@ export function ResumeFields({
             key={key}
             schema={field}
             value={object[key]}
-            onChange={(next) => onChange({ ...object, [key]: next })}
+            onChange={(next) => {
+              const updated = { ...object, [key]: next };
+              if (next === '' && !schema.required?.includes(key))
+                delete updated[key];
+              onChange(updated);
+            }}
             label={field.title || labelFor(key)}
           />
         ))}

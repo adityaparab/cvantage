@@ -8,21 +8,19 @@ const { join } = require('node:path');
 const { mkdir, readFile } = require('node:fs/promises');
 const { MongoClient } = require('mongodb');
 const { chromium } = require('playwright');
-const { BASE_RESUME_SCHEMA } = require('../dist/contracts/resume-schema');
 const source = {
-  basics: {},
-  professionalSummary: 'Software engineer building reliable tools.',
-  workExperience: [
+  basics: { summary: 'Software engineer building reliable tools.' },
+  work: [
     {
-      employer: 'Example Labs',
-      role: 'Software Engineer',
+      name: 'Example Labs',
+      position: 'Software Engineer',
       startDate: '2020',
       endDate: '2024',
       highlights: ['Built reliable internal tools.'],
     },
   ],
   skills: [
-    { category: 'Engineering', items: ['TypeScript', 'React', 'MongoDB'] },
+    { name: 'Engineering', keywords: ['TypeScript', 'React', 'MongoDB'] },
   ],
 };
 const received = [];
@@ -45,17 +43,20 @@ const proxy = http.createServer(async (request, response) => {
       return;
     }
     let result;
-    if (instructions.startsWith('Design a reusable'))
-      result = BASE_RESUME_SCHEMA;
+    if (instructions.startsWith('Inspect source for fields'))
+      result = { additions: [] };
     else if (instructions.startsWith('Map ALL')) result = source;
     else if (instructions.startsWith('Tailor sourceResume')) {
       assert.equal(
-        input.sourceResume.professionalSummary,
+        input.sourceResume.basics.summary,
         'User corrected experience with internal tools.',
       );
       result = {
         ...input.sourceResume,
-        professionalSummary: 'Software engineer focused on internal tools.',
+        basics: {
+          ...input.sourceResume.basics,
+          summary: 'Software engineer focused on internal tools.',
+        },
       };
     } else {
       const accept = input.stage === 'schema' || ++mappingJudgments > 5;
@@ -74,7 +75,7 @@ const proxy = http.createServer(async (request, response) => {
           : [
               {
                 code: 'REVIEW',
-                path: '/professionalSummary',
+                path: '/basics/summary',
                 message: 'Check summary coverage',
                 suggestedFix: 'Review the summary against your source',
               },
@@ -309,6 +310,11 @@ async function main() {
         .every((step) => step.output === ''),
     );
     assert(!JSON.stringify(activity).includes('Synthetic Applicant'));
+    assert.equal(
+      await client.db(dbName).collection('schemaVersions').countDocuments(),
+      1,
+      'No version churn for an unchanged seeded schema',
+    );
     await page.screenshot({
       path: join(output, 'activity-review.png'),
       fullPage: true,
