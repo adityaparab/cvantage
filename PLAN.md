@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** implementing the updated resume review and workflow experience. Schema processing becomes internal; parsed resumes always require user approval. Local infrastructure remains verified.
-**Next action:** streamed activity and workflow notifications (12), each on its own feature branch. Live provider quality evaluation and Railway deployment remain separate pending work.
+**Current state:** updated resume review, appearance and workflow activity are implemented and verified. Schemas stay internal; parsed resumes require user approval. Local infrastructure remains separate from future Railway deployment.
+**Next action:** live provider quality evaluation and Railway deployment remain separate pending work; all requested UI/activity milestones are complete.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 9. Separate local MongoDB deployment | Complete | 1, startup diagnostics | Compose validation; fresh/repeated startup; 26 integration tests; transaction persistence across recreation; actual app API/UI HTTP 200 |
 | 10. Internal schemas and parsed-resume approval | Complete | 4–5 | Build/lint; 29 unit, 26 integration, 5 client tests; full Chromium journey |
 | 11. Light/dark/system appearance | Complete | 2 | Build/client lint; 7 client tests; Chromium system changes/reload persistence; light/dark screenshots inspected |
-| 12. Streamed workflow activity and notifications | Planned | 10–11 | Dedicated activity routes, model streaming, visible loops/retries, upload redirect, aligned active-workflow dropdown |
+| 12. Streamed workflow activity and notifications | Complete | 10–11 | Full build/both linters; 35 unit, 30 integration, 9 client tests; Chromium streaming/retry/loop/reload/notification/approval/export journey |
 
 ### How to maintain progress
 
@@ -80,7 +80,7 @@ Keep one NestJS application and the existing React client. Use thin controllers,
 | `parsing` | LangGraph workflow, job state, iteration limits, checkpoints, review pauses |
 | `tailoring`, `exports` | Factual tailoring, separate variants, PDF/DOCX rendering |
 
-Use an authenticated job-status endpoint with polling for long-running work. Store workflow state in MongoDB, with a single active lease per job and bounded concurrency. Uploaded file bytes never enter job records or graph checkpoints. Start durable AI processing only after extraction, redaction, and original-file cleanup succeed.
+Use authenticated activity snapshots and SSE for long-running work; poll lightweight notification summaries and fall back to snapshots if the stream disconnects. Store workflow state in MongoDB, with a single active lease per job and bounded concurrency. Uploaded file bytes never enter job records or graph checkpoints. Start durable AI processing only after extraction, redaction, and original-file cleanup succeed.
 
 ### Persistence boundaries
 
@@ -234,6 +234,29 @@ Completion: all applicable acceptance criteria in `PROJECT.md` have passing evid
 
 Completion: MongoDB remains healthy on the local Docker kernel, transactions pass, and container recreation preserves data. The existing standalone MongoDB is untouched; no data migration is performed.
 
+### 10. Internal schemas and parsed-resume approval
+
+- [x] Keep schema generation, evaluation, publication and conflict handling internal; remove user schema editing/approval.
+- [x] Require explicit approval or rejection of every parsed resume, including judge-accepted output.
+- [x] Verify hidden schema content, rejection cleanup and the complete browser workflow. Merged via PR #11.
+
+### 11. Light/dark/system appearance
+
+- [x] Default to System; persist explicit Light/Dark preferences and respond to OS theme changes.
+- [x] Apply the theme before first paint and share semantic color tokens throughout the UI.
+- [x] Verify theme switching, reload persistence, blocked storage and both palettes in Chromium. Merged via PR #12.
+
+### 12. Streamed workflow activity and notifications
+
+- [x] Stream actual model answer chunks with a separate two-retry transport budget; preserve five-attempt parsing limits.
+- [x] Persist safe step progress, attempts and retry counts; hide all schema output and redact completed JSON string values before previewing.
+- [x] Add owner-scoped snapshots/SSE, session revocation, reconnects, cancellation fencing, interrupted-attempt recovery and retention cleanup.
+- [x] Navigate uploads and tailoring to dedicated activity URLs; show each step's inactive/active/success/failure state and review actions.
+- [x] Add a top-navigation notification dropdown with live step/attempt/retry summaries, deep links, keyboard dismissal and aligned mobile/desktop rows.
+- [x] Verify builds, both linters, 35 unit, 30 integration and 9 client tests; run the full browser journey with actual SSE chunks and a deliberate HTTP 429 retry. Inspect desktop/light and mobile/dark screenshots.
+
+Completion: activity survives page reloads without rerunning models; accepted parsing and tailoring discard temporary progress; schema content never appears in streamed previews. Tailoring remains an in-process task and reports interruption after a server restart rather than replaying a job description. Live provider quality evaluation remains separate.
+
 ## Verification commands
 
 Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
@@ -285,7 +308,8 @@ yarn test:models
 | Startup diagnostics | `src/main.ts`, configuration and database initialization now report safe actionable errors; reject standalone topology before writes; document persistent local replica-set setup | Server build/lint; 29 unit and 26 integration tests; real compiled process exits cleanly against standalone MongoDB and serves API/UI HTTP 200 against an isolated replica set | [PR #9](https://github.com/adityaparab/cvantage/pull/9), `feat/startup-diagnostics`, records the change and merge status. Local `.env` and existing MongoDB remain unchanged pending the user's database setup choice. |
 | Local MongoDB deployment | `deploy/local/`, deployment boundary docs, `db:*` scripts, and matching `.env.example`; local Docker kernel compatibility setting | Compose validates; fresh and repeated starts healthy; 26 integration tests pass against MongoDB 8.0.32; committed marker survives container recreation; actual app API/UI HTTP 200 | [PR #10](https://github.com/adityaparab/cvantage/pull/10), `feat/local-mongodb-compose`, records the change and merge status. Current `.env` already matches the new instance and was preserved. Existing MongoDB on 27017 remains untouched. Railway is deferred. |
 | Internal schema processing and resume approval | Removed schema editor/manual publication path; hid schema proposals and judge output; always pause mapped results for user approval/rejection | Build, both linters, 29 unit, 26 integration and 5 client tests; Chromium upload-to-download journey passes | [PR #11](https://github.com/adityaparab/cvantage/pull/11), `feat/background-schema-review`; next: appearance selection |
-| Appearance selection | Light, Dark, and System (default); saved preference, live OS changes, pre-paint initialization and shared color tokens | Build/client lint; 7 client tests; Chromium workflow plus appearance/reload checks; both palettes inspected | Merge [PR #12](https://github.com/adityaparab/cvantage/pull/12) from `feat/theme-selection`, then streamed workflow activity |
+| Appearance selection | Light, Dark, and System (default); saved preference, live OS changes, pre-paint initialization and shared color tokens | Build/client lint; 7 client tests; Chromium workflow plus appearance/reload checks; both palettes inspected | [PR #12](https://github.com/adityaparab/cvantage/pull/12) merged; streamed workflow activity next |
 
+| Streamed workflow activity | `src/activity`, streaming LiteLLM adapter, protected progress persistence, activity routes, upload/tailoring redirects and notification dropdown | Full build/both linters; 35 unit, 30 integration, 9 client tests; full Chromium journey with 15 redacted requests, retry/loop/reload checks and inspected mobile/dark dropdown | [PR #13](https://github.com/adityaparab/cvantage/pull/13), `feat/workflow-activity`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

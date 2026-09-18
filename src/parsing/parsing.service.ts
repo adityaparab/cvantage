@@ -1,3 +1,5 @@
+import { trackedGenerate } from '../activity/model-progress';
+import type { StepRun } from '../activity/activity.types';
 import {
   ConflictException,
   Injectable,
@@ -125,12 +127,20 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
     await this.patch(job, { ...changes, leaseUntil: new Date(0) });
   }
   private async runAttempt(job: ParseJob) {
+    const activity = job.activity ?? [];
+    for (const run of activity) {
+      if (run.status === 'active') {
+        run.status = 'failure';
+        run.outcome = 'interrupted';
+      }
+    }
     const counter =
       job.stage === 'schema' ? 'schemaIterations' : 'mappingIterations';
     if (job[counter] >= MAX_STAGE_ITERATIONS) {
       await this.checkpoint(job, {
         status: job.stage === 'schema' ? 'failed' : 'review_required',
         failureCode: 'ITERATIONS_EXHAUSTED',
+        activity,
       });
       return;
     }
@@ -142,6 +152,7 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
         : await this.schemas.get(job.schemaVersion ?? 0);
     const schema = current?.definition ?? BASE_RESUME_SCHEMA;
     await this.patch(job, {
+      activity,
       [counter]: job[counter] + 1,
       status: job.stage,
       failureCode: undefined,
@@ -150,7 +161,9 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
     // never replayed; this snapshot is the durable recovery boundary for the graph.
     const graph = new StateGraph(State)
       .addNode('worker', async () => {
-        const candidate = await this.models.generate(
+        const candidate = await this.generate(
+          job,
+          pii,
           'worker',
           job.stage === 'schema' ? SCHEMA_PROMPT : MAPPING_PROMPT,
           {
@@ -168,7 +181,7 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
       })
       .addNode('evaluate', async (state) => {
         if (state.candidate === null) return { judge: null };
-        const judge = await this.models.generate('judge', JUDGE_PROMPT, {
+        const judge = await this.generate(job, pii, 'judge', JUDGE_PROMPT, {
           stage: job.stage,
           source: job.source,
           schema,
@@ -189,7 +202,13 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
         ) {
           await this.accept(job, state.candidate, current?.version ?? 0, pii);
         } else {
+          const last = job.activity?.at(-1);
+          if (last) {
+            last.outcome = 'revision_requested';
+            last.status = 'failure';
+          }
           await this.checkpoint(job, {
+            activity: job.activity,
             status:
               job[counter] >= MAX_STAGE_ITERATIONS
                 ? job.stage === 'schema'
@@ -211,6 +230,37 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
       .addEdge('decide', END)
       .compile();
     await graph.invoke({}, { recursionLimit: 5, callbacks: [] });
+  }
+  private async generate(
+    job: ParseJob,
+    pii: PiiRecord,
+    role: 'worker' | 'judge',
+    instructions: string,
+    data: unknown,
+  ) {
+    const runs = job.activity ?? [];
+    const run: StepRun = {
+      step: `${job.stage === 'schema' ? 'preparation' : 'mapping'}_${role}`,
+      attempt:
+        job.stage === 'schema' ? job.schemaIterations : job.mappingIterations,
+      status: 'active',
+      retries: 0,
+      received: 0,
+      output: '',
+      startedAt: new Date(),
+    };
+    runs.push(run);
+    return trackedGenerate(
+      this.models,
+      role,
+      instructions,
+      data,
+      pii,
+      run,
+      async () => {
+        await this.patch(job, { activity: runs });
+      },
+    );
   }
   private validCandidate(
     job: ParseJob,

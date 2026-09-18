@@ -43,6 +43,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
   async createIndexes() {
     await Promise.all([
+      this.db
+        .collection('workflowActivities')
+        .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+      this.db
+        .collection('workflowActivities')
+        .createIndex({ ownerId: 1, createdAt: -1 }),
+      this.db.collection('resumes').createIndex({ ownerId: 1, workflowId: 1 }),
+      this.db.collection('variants').createIndex({ ownerId: 1, workflowId: 1 }),
       this.db.collection('users').createIndex({ email: 1 }, { unique: true }),
       this.db
         .collection('sessions')

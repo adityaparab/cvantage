@@ -50,3 +50,5 @@ yarn test:browser
 Browser tests use synthetic data, a random disposable database and a local deterministic model server. They exercise the real client, backend, LangChain adapter and LangGraph workflow. Use `yarn test:models` separately to evaluate configured live models. Offline tests do not establish live model quality.
 
 [PROJECT.md](PROJECT.md) defines product behavior. [PLAN.md](PLAN.md) tracks implementation, PRs, verification and pending live evaluation. [AGENT.md](AGENT.md) contains agent guidance and installed skill routing.
+
+Successful uploads open a live workflow activity page. Follow preparation, extraction, review, loop attempts and retries there; the navigation bell reopens active work. Schema processing stays internal, and you approve or reject only parsed resume content. Appearance supports Light, Dark and System (the default).

@@ -1,3 +1,5 @@
+import { ActivityController } from './activity/activity.controller';
+import { ActivityService } from './activity/activity.service';
 import { ExportsService } from './exports/exports.service';
 import { ExportsController } from './exports/exports.controller';
 import { TailoringService } from './tailoring/tailoring.service';
@@ -34,6 +36,7 @@ import { AppService } from './app.service';
     }),
   ],
   controllers: [
+    ActivityController,
     AppController,
     ResumesController,
     UploadsController,
@@ -42,6 +45,7 @@ import { AppService } from './app.service';
     ExportsController,
   ],
   providers: [
+    ActivityService,
     AppService,
     LocalDocumentExtractor,
     ParsingService,

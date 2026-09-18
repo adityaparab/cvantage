@@ -74,7 +74,7 @@ Original bytes remain in memory and are cleared after extraction; originals are 
 
 A single background scheduler claims jobs with three-minute MongoDB leases. Each graph invocation runs worker → judge → decision for one reserved iteration. MongoDB job snapshots are the recovery checkpoints; there is no second graph-history collection. Counters are persisted before calls, so crashes consume ambiguous attempts and cannot reset budgets. Reclaimed jobs resume from the stored stage. Both stages stop at five attempts. Schema conflicts re-evaluate against the new latest schema within that budget. Acceptance atomically deletes the entire temporary snapshot; TTL and access-time checks enforce 30-day expiry. Cancellation deletes the job and fences further writes.
 
-Model calls use the configured LiteLLM chat-completions endpoint with no tools, no transport retries, a 60-second request timeout and 12,000 output-token cap. Malformed JSON is a failed iteration; provider errors produce a visible failed job for user review. Ambient LangSmith/LangChain tracing and verbose model logs are disabled to prevent exporting resume content. Worker proposals and judge feedback are screened before storage or reuse.
+Model calls use the configured LiteLLM chat-completions endpoint with no tools, a 12,000 output-token cap, a 20-second request timeout and a 65-second overall call deadline. Answer text streams through LangChain. Transient HTTP/network failures retry at most twice, with visible retry counts; authentication, validation and cancelled-progress failures do not retry. Retries stay inside the same graph iteration. Malformed JSON is a failed iteration; provider errors produce a visible failed job for user review. Ambient LangSmith/LangChain tracing and verbose model logs are disabled to prevent exporting resume content. Worker proposals and judge feedback are screened before storage or reuse.
 
 Run `yarn build:server && node scripts/smoke-models.cjs` after configuring `.env` to check both models with synthetic data. This sends four bounded calls and applies the production acceptance contract. Live evaluation has not run in this workspace because credentials/model identifiers are absent. The deterministic MongoDB tests use the real graph with a scripted model adapter; they do not establish live model quality.
 
@@ -84,7 +84,7 @@ Schema generation, validation and publication are internal background operations
 
 ## Tailoring
 
-Tailoring uses a saved source revision and its extraction schema. It permits summary/highlight wording changes while preserving all other values, list order and highlight counts; new numeric claims are rejected. The judge checks narrative fidelity, and every proposal still requires user review with a source/proposal comparison. Model judgment is not proof of factual equivalence. Variants store the non-PII source snapshot for comparison and never overwrite the source. Older-source variants are labeled in the UI. Calls are bounded to one worker and one judge, without retries, with at most two active requests per process and one per account. The job description is redacted and requires user confirmation before use; it is not stored.
+Tailoring uses a saved source revision and its extraction schema. It permits summary/highlight wording changes while preserving all other values, list order and highlight counts; new numeric claims are rejected. The judge checks narrative fidelity, and every proposal still requires user review with a source/proposal comparison. Model judgment is not proof of factual equivalence. Variants store the non-PII source snapshot for comparison and never overwrite the source. Older-source variants are labeled in the UI. Calls are bounded to one worker and one judge, each with the same two-retry transport budget, with at most two active workflows per process and one per account. The job description is redacted and requires user confirmation before use; it is not stored.
 
 ## Exports
 
@@ -105,3 +105,14 @@ Before public multi-instance deployment, replace in-process authentication and m
 ## Appearance
 
 The header offers System (default), Light, and Dark. A browser-local preference persists across reloads and tabs; System follows live OS changes. The initial HTML applies the selected palette before rendering. Shared CSS variables cover forms, panels, errors, and focus indicators. If browser storage is unavailable, switching still works for the current page.
+
+
+## Workflow activity
+
+Upload success navigates to `/activity/:id`. The page hosts redacted-text confirmation, the preparation/extraction worker and judge steps, attempt/retry history, and parsed-resume approval or rejection. `/resumes/:id` opens saved content; tailoring returns a workflow ID immediately and opens its own activity page. Its review link selects the resulting variant. The navigation bell lists running workflows and drafts awaiting action, with the current step, attempt, and retry count; rows link to their activity URLs.
+
+`GET /api/workflows` returns owner-scoped summaries. `GET /api/workflows/:id` returns a snapshot; `/events` provides SSE updates from MongoDB every 400 ms when progress changes, with heartbeats. Session revocation is checked throughout streaming. The browser reconnects and retrieves snapshots without repeating model calls. Reverse proxies must allow long-lived SSE and disable response buffering (the endpoint sends `X-Accel-Buffering: no`). Railway configuration remains separate from `deploy/local`.
+
+Streamed answer previews are provisional, redacted, capped at 8,000 characters per step, and revealed only as complete decoded JSON string values arrive, preventing identifying prefixes or escaped Unicode from bypassing redaction. Raw provider deltas, reasoning, prompts, and schema output are never persisted as activity. Preparation steps expose counters and status only. Parsing activity shares the existing job's leases, cancellation, acceptance deletion and 30-day expiry. Accepted records retain only a workflow ID so old activity links resolve to a completed state.
+
+Tailoring progress has a 30-day TTL, is deleted on variant approval, and stores no job description. It runs in the application process; a restart does not replay the in-memory request. An activity with no update for three minutes reports interruption and the user can start again from the saved resume. Shared admission limits and a durable tailoring queue remain future deployment work.

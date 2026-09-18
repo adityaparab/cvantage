@@ -1,6 +1,8 @@
+import type { StepRun } from '../activity/activity.types';
 import type { ResumeData, ResumeSchema } from '../contracts/resume-schema';
 import type { JobStatus, JudgeResult, Stage } from '../contracts/workflow';
 export interface ResumeRecord {
+  workflowId?: string;
   _id: string;
   ownerId: string;
   schemaVersion: number;
@@ -30,6 +32,7 @@ export interface SchemaRecord {
   createdAt: Date;
 }
 export interface ParseJob {
+  activity?: StepRun[];
   _id: string;
   ownerId: string;
   resumeId: string;

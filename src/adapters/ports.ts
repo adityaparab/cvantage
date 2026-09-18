@@ -6,11 +6,15 @@ export abstract class DocumentExtractor {
     extension: 'pdf' | 'docx' | 'doc',
   ): Promise<string>;
 }
+export type ModelEvent =
+  { type: 'delta'; text: string } | { type: 'retry'; attempt: number };
+export type ModelObserver = (event: ModelEvent) => Promise<void>;
 export abstract class ModelGateway {
   abstract generate(
     role: 'worker' | 'judge',
     instructions: string,
     data: unknown,
+    observe?: ModelObserver,
   ): Promise<unknown>;
 }
 export abstract class ResumeRenderer {

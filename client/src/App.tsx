@@ -1,3 +1,6 @@
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import WorkflowActivity from './components/WorkflowActivity';
+import WorkflowNotifications from './components/WorkflowNotifications';
 import ResumeEditor from './components/ResumeEditor';
 import UploadResume from './components/UploadResume';
 import { useCallback, useEffect, useState } from 'react';
@@ -21,7 +24,9 @@ export default function App() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [selected, setSelected] = useState<string | null>(null);
+  const { workflowId, resumeId: selected } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const refreshResumes = useCallback(() => {
     api<Resume[]>('/resumes')
       .then(setResumes)
@@ -61,7 +66,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, location.pathname]);
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -90,7 +95,7 @@ export default function App() {
       await api('/auth/logout', { method: 'POST', body: '{}' });
       setUser(null);
       setResumes([]);
-      setSelected(null);
+      navigate('/');
       setCsrfToken('');
     } catch {
       setError('Could not sign out. Please try again.');
@@ -101,11 +106,12 @@ export default function App() {
   return (
     <div className="app-shell">
       <header>
-        <a href="/" className="brand">
+        <Link to="/" className="brand">
           CVantage<span>Make your experience count.</span>
-        </a>
+        </Link>
         <div className="header-actions">
           <ThemeSelect />
+          {user && <WorkflowNotifications />}
           {user && (
             <button
               className="secondary"
@@ -121,46 +127,56 @@ export default function App() {
         {!ready ? (
           <p role="status">Loading your workspace…</p>
         ) : user ? (
-          <>
-            <p className="eyebrow">YOUR WORKSPACE</p>
-            <h1>Your next chapter starts here.</h1>
-            <p className="muted">Signed in as {user.email}</p>
-            {selected ? (
-              <ResumeEditor
-                key={selected}
-                id={selected}
-                onClose={() => {
-                  setSelected(null);
-                  refreshResumes();
-                }}
-              />
-            ) : (
-              <UploadResume onComplete={refreshResumes} />
-            )}
-            <section className="panel">
-              <h2>Your resumes</h2>
-              {resumes.length ? (
-                <ul>
-                  {resumes.map((resume) => (
-                    <li key={resume._id}>
-                      <button
-                        className="text-button"
-                        onClick={() => setSelected(resume._id)}
-                      >
-                        Resume ·{' '}
-                        {new Date(resume.updatedAt).toLocaleDateString()} · Open
-                        and edit
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+          workflowId ? (
+            <WorkflowActivity
+              key={workflowId}
+              id={workflowId}
+              onComplete={refreshResumes}
+            />
+          ) : (
+            <>
+              <p className="eyebrow">YOUR WORKSPACE</p>
+              <h1>Your next chapter starts here.</h1>
+              <p className="muted">Signed in as {user.email}</p>
+              {selected ? (
+                <ResumeEditor
+                  key={selected}
+                  id={selected}
+                  onClose={() => {
+                    navigate('/');
+                    refreshResumes();
+                  }}
+                />
               ) : (
-                <p className="muted">
-                  No resumes yet. Your saved resumes will appear here.
-                </p>
+                <UploadResume
+                  onUploaded={(id) => navigate(`/activity/${id}`)}
+                />
               )}
-            </section>
-          </>
+              <section className="panel">
+                <h2>Your resumes</h2>
+                {resumes.length ? (
+                  <ul>
+                    {resumes.map((resume) => (
+                      <li key={resume._id}>
+                        <button
+                          className="text-button"
+                          onClick={() => navigate(`/resumes/${resume._id}`)}
+                        >
+                          Resume ·{' '}
+                          {new Date(resume.updatedAt).toLocaleDateString()} ·
+                          Open and edit
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">
+                    No resumes yet. Your saved resumes will appear here.
+                  </p>
+                )}
+              </section>
+            </>
+          )
         ) : (
           <section className="auth-layout">
             <div>
