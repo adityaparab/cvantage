@@ -1,3 +1,4 @@
+import { ExportsService } from '../src/exports/exports.service';
 import { TailoringService } from '../src/tailoring/tailoring.service';
 import { EditingService } from '../src/resumes/editing.service';
 import { SchemaRepository } from '../src/database/schema.repository';
@@ -406,6 +407,12 @@ describe('durable worker/judge parsing', () => {
     await expect(
       tailoring.get('another-owner', job.resumeId, variant._id),
     ).rejects.toThrow();
+    await expect(
+      app.get(ExportsService).create(job.ownerId, job.resumeId, {
+        format: 'pdf',
+        variantId: variant._id,
+      }),
+    ).rejects.toThrow('Approve');
     const reviewed = await tailoring.update(
       job.ownerId,
       job.resumeId,
@@ -413,6 +420,23 @@ describe('durable worker/judge parsing', () => {
       { revision: 0, data: tailored, approve: true },
     );
     expect(reviewed.status).toBe('reviewed');
+    const exported = await app
+      .get(ExportsService)
+      .create(job.ownerId, job.resumeId, {
+        format: 'docx',
+        variantId: variant._id,
+      });
+    expect(exported.buffer.subarray(0, 2).toString()).toBe('PK');
+    await expect(
+      app
+        .get(ExportsService)
+        .create('another-owner', job.resumeId, { format: 'pdf' }),
+    ).rejects.toThrow();
+    await expect(
+      app
+        .get(ExportsService)
+        .create(job.ownerId, job.resumeId, { format: 'doc' }),
+    ).rejects.toThrow();
     await expect(
       tailoring.update(job.ownerId, job.resumeId, variant._id, {
         revision: 0,

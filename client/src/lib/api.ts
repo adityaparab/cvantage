@@ -4,7 +4,7 @@ export class ApiError extends Error {
 }
 let csrfToken = ''
 export function setCsrfToken(token: string) { csrfToken = token }
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function responseFor(path: string, options: RequestInit = {}): Promise<Response> {
   const response = await fetch(`/api${path}`, {
     ...options, credentials: 'same-origin',
     headers: { ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }), 'X-Requested-With': 'CVantage', 'X-CSRF-Token': csrfToken, ...options.headers },
@@ -14,5 +14,8 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     const message = body && typeof body === 'object' && 'message' in body && typeof body.message === 'string' ? body.message : 'The request failed. Please try again.'
     throw new ApiError(response.status, message)
   }
-  return response.json() as Promise<T>
+  return response
 }
+
+export async function api<T>(path:string,options:RequestInit={}):Promise<T> {return (await responseFor(path,options)).json() as Promise<T>}
+export async function apiFile(path:string,options:RequestInit):Promise<Blob>{return (await responseFor(path,options)).blob()}

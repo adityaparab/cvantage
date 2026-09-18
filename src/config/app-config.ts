@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
 
 const environmentSchema = z.object({
+  EXPORT_FONT_PATH: z
+    .string()
+    .default('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
