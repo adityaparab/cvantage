@@ -9,7 +9,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 ## Status and next action
 
 **Current state:** milestone 16 is implemented and verified: editable redaction review before parsing, with typed markers normalized locally.
-**Next action:** merge `feat/editable-redaction-review`, then implement milestone 17 (`db:wipe`) on a separate branch. Live provider evaluation and Railway remain separate.
+**Next action:** implement milestone 17 (`db:wipe`) on a separate branch after [PR #17](https://github.com/adityaparab/cvantage/pull/17) merges. Live provider evaluation and Railway remain separate.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -296,7 +296,7 @@ Completion: the local setup command preserves volumes and gates application star
 - [x] Make editable review a dedicated upload step with selection redaction controls and explicit approval before parsing starts; route notifications and reloads appropriately.
 - [x] Verify edit/approval/privacy boundaries, marker handling and browser upload → review → activity flow. Full build/both linters, 45 unit, 41 integration and 15 client tests pass; Chromium journey and desktop/mobile inspection pass.
 
-Completion: user edits and approves redaction separately before any model call. Canonical markers and local aliases are documented; unknown placeholders remain intact. Merge before the database wipe step.
+Completion: user edits and approves redaction separately before any model call. Canonical markers and local aliases are documented; unknown placeholders remain intact. [PR #17](https://github.com/adityaparab/cvantage/pull/17) records the feature change and merge status.
 
 ### 17. Explicit database wipe command
 
@@ -359,6 +359,6 @@ yarn test:models
 | Seeded schema extraction | Supplied `schema/schema.json`, startup seed transaction, additive/evidence-based worker contract, baseline validation/editor/export support and historical compatibility | Full build/both linters; 40 unit, 36 integration, 10 client tests; complete Chromium journey and unchanged-schema version reuse | [PR #14](https://github.com/adityaparab/cvantage/pull/14), `feat/seeded-resume-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Single-pass schema modification | Stage-specific limits, terminal schema rejection/conflicts, restart protection and corrected activity labels | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and full resume journey | [PR #15](https://github.com/adityaparab/cvantage/pull/15), `feat/single-pass-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Local startup setup | `deploy/local/setup.cjs`, `setup`/`prestart` scripts and local/production startup documentation | Isolated Compose absent/stopped/running paths, stable container/data, failed-Docker startup abort, actual setup → client build → API HTTP 200; test resources cleaned up | [PR #16](https://github.com/adityaparab/cvantage/pull/16), `feat/local-startup-setup`, records the implementation and merge status; existing local database left running without restart |
-| Editable redaction review | Typed PII markers, local alias normalization, dedicated editable upload review with selection tools, approval-gated activity and notification routing | Full build/both linters; 45 unit, 41 integration, 15 client tests; Chromium flow and desktop/mobile inspection | Merge `feat/editable-redaction-review`; next: explicit database wipe command |
+| Editable redaction review | Typed PII markers, local alias normalization, dedicated editable upload review with selection tools, approval-gated activity and notification routing | Full build/both linters; 45 unit, 41 integration, 15 client tests; Chromium flow and desktop/mobile inspection | [PR #17](https://github.com/adityaparab/cvantage/pull/17), `feat/editable-redaction-review`; next: explicit database wipe command |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
