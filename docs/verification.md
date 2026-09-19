@@ -68,3 +68,7 @@ Full build/client lint and 32 client tests pass. Regression coverage includes im
 ## Resume sections — 2026-09-19
 
 Full build, both linters, 45 backend unit, 51 database/HTTP and 33 client tests pass. The synthetic Chromium journey verifies primary navigation, dedicated upload/review routes, source editing without tailoring controls, the tailoring selector and both exports. Deletion coverage includes confirmation, ownership, CSRF, stale revisions, related-record cleanup, sibling preservation and generation racing with deletion. Browser artifacts: `/tmp/cvantage-sections-browser`.
+
+## Job import and streamed analysis — 2026-09-19
+
+Build/both linters, 67 unit, 52 integration and 35 client tests pass. URL tests cover public-address pinning, private/mixed DNS, redirects, response limits, HTML extraction and local redaction. HTTP tests cover authentication/CSRF boundaries and malformed/PII-bearing analysis rejection. Browser verification uses the actual streaming adapter against a scripted local proxy and displays both new analysis stages before wording/review (17 redacted requests); PDF/DOCX exports pass. Analysis screenshot inspected in `/tmp/cvantage-analysis-browser`. External job sites and live models were not called.

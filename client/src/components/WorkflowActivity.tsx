@@ -12,6 +12,8 @@ const parsingSteps = [
   ['approval', 'Your approval'],
 ];
 const tailoringSteps = [
+  ['resume_analysis', 'Analyze resume'],
+  ['job_analysis', 'Analyze job description'],
   ['tailoring_worker', 'Tailor resume wording'],
   ['tailoring_judge', 'Review tailored content'],
   ['approval', 'Your approval'],

@@ -3,6 +3,8 @@ export type StepId =
   | 'preparation_judge'
   | 'mapping_worker'
   | 'mapping_judge'
+  | 'resume_analysis'
+  | 'job_analysis'
   | 'tailoring_worker'
   | 'tailoring_judge';
 export interface StepRun {

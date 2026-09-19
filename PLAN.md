@@ -36,7 +36,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 20. Redaction review readiness | Complete | 16 | Full build/client lint; 32 client tests; Chromium first navigation without refetch, delayed readiness/progress, and full review-to-export journey |
 
 | 21. Resume management and primary navigation | Complete | 20 | Dedicated resume list/upload/edit/delete and separate tailoring entry |
-| 22. Job URL input and streamed analysis | Planned | 21 | Safe public job-page import and distinct resume/JD analysis streams |
+| 22. Job URL input and streamed analysis | Complete | 21 | Safe public job-page import and distinct resume/JD analysis streams |
 | 23. Tailoring suggestions and result routes | Planned | 22 | Select/apply suggestions and review updated resume under nested tailoring URLs |
 
 ### How to maintain progress
@@ -341,9 +341,9 @@ Completion: the command drops only the explicitly configured database, protects 
 
 ### 22. Job URL input and streamed analysis
 
-- [ ] Import bounded public job-page text from a URL for user review before any model call.
-- [ ] Stream separate resume and job-description analysis, followed by wording suggestions and factual review; preserve privacy/attempt limits.
-- [ ] Verify URL network boundaries, analysis contracts, streamed progress and existing workflows, then merge its PR.
+- [x] Import bounded public job-page text from a URL for user review before any model call.
+- [x] Stream separate resume and job-description analysis, followed by wording suggestions and factual review; preserve privacy/attempt limits.
+- [x] Verify URL network boundaries, analysis contracts, streamed progress and existing workflows, then merge its PR.
 
 ### 23. Tailoring suggestions and result routes
 
@@ -422,3 +422,5 @@ yarn test:models
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
 
 Resume management PR: [#22](https://github.com/adityaparab/cvantage/pull/22); its linked status records the merge.
+
+| Job URL import and analysis | Bounded public HTTPS import, editable locally redacted text, separate streamed resume/job analysis and strict output contracts | Build/both linters, 67 unit, 52 integration and 35 client tests; Chromium completes 17 redacted model calls and exports | [PR #23](https://github.com/adityaparab/cvantage/pull/23), `feat/job-url-streamed-analysis`; next: suggestions and result screens |

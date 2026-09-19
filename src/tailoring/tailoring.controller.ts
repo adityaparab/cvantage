@@ -1,3 +1,4 @@
+import { JobDescriptionService } from './job-description.service';
 import {
   Body,
   Controller,
@@ -14,7 +15,17 @@ import { TailoringService } from './tailoring.service';
 @Controller('resumes/:resumeId')
 @UseGuards(SessionGuard)
 export class TailoringController {
-  constructor(private readonly service: TailoringService) {}
+  constructor(
+    private readonly service: TailoringService,
+    private readonly jobs: JobDescriptionService,
+  ) {}
+  @Post('job-description') import(
+    @Req() req: AuthRequest,
+    @Param('resumeId') id: string,
+    @Body() input: unknown,
+  ) {
+    return this.jobs.import(req.session.ownerId, id, input);
+  }
   @Post('tailor') create(
     @Req() req: AuthRequest,
     @Param('resumeId') id: string,

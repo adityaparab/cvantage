@@ -28,6 +28,9 @@ describe('resume resource deletion', () => {
     await app.init();
     database = app.get(DatabaseService);
   });
+  beforeEach(() => {
+    generate.mockReset();
+  });
   afterAll(async () => {
     await app.close();
   });
@@ -69,6 +72,17 @@ describe('resume resource deletion', () => {
       ).body,
     );
     const target = await seed(account.id);
+    await agent
+      .post(`/api/resumes/${target._id}/job-description`)
+      .send({ url: 'https://example.com' })
+      .expect(403);
+    await agent
+      .post(`/api/resumes/${target._id}/job-description`)
+      .set('X-CSRF-Token', account.csrfToken)
+      .send({ url: 'https://127.0.0.1/private' })
+      .expect(400);
+    expect(generate).not.toHaveBeenCalled();
+
     const sibling = await seed(account.id);
     const other = await seed('other-owner');
     for (const name of ['variants', 'workflowActivities', 'parseJobs']) {
@@ -117,6 +131,8 @@ describe('resume resource deletion', () => {
       started = resolve;
     });
     generate
+      .mockResolvedValueOnce({ summary: 'Engineer experience', findings: [] })
+      .mockResolvedValueOnce({ summary: 'Software role', findings: [] })
       .mockImplementationOnce(() => {
         started();
         return new Promise((resolve) => {
@@ -152,5 +168,27 @@ describe('resume resource deletion', () => {
         .collection('variants')
         .countDocuments({ resumeId: resume._id }),
     ).toBe(0);
+  });
+  it('rejects malformed or identifying analysis before generating a proposal', async () => {
+    const resume = await seed(randomUUID());
+    for (const result of [
+      { summary: '', findings: [] },
+      { summary: 'Contact private@example.test', findings: [] },
+    ]) {
+      generate.mockReset().mockResolvedValueOnce(result);
+      await expect(
+        app.get(TailoringService).create(resume.ownerId, resume._id, {
+          revision: 0,
+          jobDescription: 'Seeking a software engineer for internal tools.',
+          piiConfirmed: true,
+        }),
+      ).rejects.toThrow('Analysis could not be validated');
+      expect(generate).toHaveBeenCalledTimes(1);
+      expect(
+        await database.db
+          .collection('variants')
+          .countDocuments({ resumeId: resume._id }),
+      ).toBe(0);
+    }
   });
 });

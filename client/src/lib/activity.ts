@@ -26,7 +26,10 @@ export function activityStatus(activity: Activity) {
   if (activity.kind === 'parsing' && !activity.piiConfirmed)
     return 'Redaction review required';
   if (activity.status === 'review_required') return 'Ready for your review';
-  if (activity.steps.some((step) => step.status === 'active'))
+  if (
+    activity.steps.some((step) => step.status === 'active') ||
+    (activity.status === 'running' && activity.steps.length > 0)
+  )
     return 'In progress';
   return 'Queued';
 }

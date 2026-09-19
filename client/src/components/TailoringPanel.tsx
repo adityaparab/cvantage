@@ -1,3 +1,4 @@
+import JobDescriptionInput from './JobDescriptionInput';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ExportControls from './ExportControls';
 import { useEffect, useState } from 'react';
@@ -53,6 +54,7 @@ export default function TailoringPanel({
   const [data, setData] = useState<unknown>({});
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function TailoringPanel({
       .catch(() => setError('Could not load tailored versions.'));
   }, [resume._id, resume.revision, selectedId]);
   async function create() {
-    if (busy || unsaved || editing) return;
+    if (busy || importing || unsaved || editing) return;
     setBusy(true);
     setError('');
     try {
@@ -125,23 +127,15 @@ export default function TailoringPanel({
           void create();
         }}
       >
-        <label>
-          Job description
-          <textarea
-            rows={7}
-            minLength={20}
-            maxLength={30000}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            required
-          />
-        </label>
-        <label className="confirmation">
-          <input type="checkbox" required />I removed names, contact
-          information, and locations from this description.
-        </label>
+        <JobDescriptionInput
+          onImportingChange={setImporting}
+          resumeId={resume._id}
+          description={description}
+          onChange={setDescription}
+          disabled={busy}
+        />
         {unsaved && <p>Save your resume changes before tailoring.</p>}
-        <button disabled={busy || unsaved || editing}>
+        <button disabled={busy || importing || unsaved || editing}>
           {busy ? 'Preparing your version…' : 'Create tailored version'}
         </button>
       </form>
