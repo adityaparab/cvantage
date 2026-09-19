@@ -24,12 +24,26 @@ export function activityStatus(activity: Activity) {
   if (activity.status === 'completed') return 'Completed';
   if (activity.status === 'failed') return 'Needs attention';
   if (activity.kind === 'parsing' && !activity.piiConfirmed)
-    return 'Check redacted text';
+    return 'Redaction review required';
   if (activity.status === 'review_required') return 'Ready for your review';
   if (activity.steps.some((step) => step.status === 'active'))
     return 'In progress';
   return 'Queued';
 }
 export function activityTitle(activity: Activity) {
+  if (
+    activity.kind === 'parsing' &&
+    !activity.piiConfirmed &&
+    activity.status !== 'completed'
+  )
+    return 'Upload review';
   return activity.kind === 'parsing' ? 'Resume parsing' : 'Resume tailoring';
+}
+
+export function activityHref(activity: Activity) {
+  return activity.kind === 'parsing' &&
+    !activity.piiConfirmed &&
+    activity.status !== 'completed'
+    ? `/uploads/${activity.id}/review`
+    : `/activity/${activity.id}`;
 }

@@ -21,6 +21,7 @@ import { validateResumeData } from '../contracts/resume-schema';
 import { judgeSchema } from '../contracts/workflow';
 import type { JudgeResult } from '../contracts/workflow';
 import { containsPii, redactPii } from '../documents/pii';
+import { normalizeRedactionMarkers } from '../documents/redaction-markers';
 import { preservesFacts } from './facts';
 export interface Variant {
   workflowId?: string;
@@ -160,7 +161,10 @@ export class TailoringService {
         throw new BadRequestException(
           'Check identifying details in the source resume',
         );
-      const description = redactPii(body.data.jobDescription, pii);
+      const description = redactPii(
+        normalizeRedactionMarkers(body.data.jobDescription),
+        pii,
+      );
       const candidate = await this.call(
         'worker',
         prompt,

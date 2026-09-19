@@ -24,6 +24,7 @@ import {
   LocalDocumentExtractor,
 } from './document-extractor';
 import { piiSchema, redactPii } from './pii';
+import { normalizeRedactionMarkers } from './redaction-markers';
 import {
   MAX_UPLOAD_BYTES,
   REVIEW_RETENTION_DAYS,
@@ -72,9 +73,11 @@ export class UploadsController {
     response.once('close', onClose);
     let source: string;
     try {
-      source = redactPii(
-        await this.extractor.extract(file.buffer, extension, abort.signal),
-        parsed.data,
+      source = normalizeRedactionMarkers(
+        redactPii(
+          await this.extractor.extract(file.buffer, extension, abort.signal),
+          parsed.data,
+        ),
       );
     } finally {
       file.buffer.fill(0);
@@ -161,7 +164,7 @@ export class UploadsController {
         {
           $set: {
             source: redactPii(
-              parsed.data.source,
+              normalizeRedactionMarkers(parsed.data.source),
               piiSchema.parse({
                 name: pii.name,
                 contactNumber: pii.contactNumber,
