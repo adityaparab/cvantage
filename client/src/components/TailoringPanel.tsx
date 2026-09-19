@@ -213,6 +213,7 @@ export default function TailoringPanel({
               value={data}
               onChange={setData}
               label="Tailored resume"
+              allowDelete={false}
               onEditingChange={setEditing}
               disabled={busy}
             />
