@@ -27,6 +27,8 @@ The backend serves the client and API at `http://localhost:3000`. API routes use
 
 `yarn start:prod` does not run Docker setup, keeping deployment startup independent of local infrastructure.
 
+To clear application data, stop the application and run `yarn db:wipe`. It reads `MONGODB_URI` and an explicit `MONGODB_DATABASE` from the environment or root `.env`, shows the target, and asks you to type the database name. For noninteractive use: `yarn db:wipe --confirm <database-name>`. This deletes that database's accounts, resumes, PII, drafts, sessions and schema versions. Other databases and Docker volumes remain intact. Restart the application afterward to recreate indexes and seed the baseline schema.
+
 ## Workflow and privacy
 
 - Upload PDF, DOCX or legacy DOC up to 20,000,000 bytes. Originals are processed in memory and discarded after extraction. Image-only documents need a readable replacement; OCR is not implemented.

@@ -10,6 +10,8 @@ The recommended local setup is [Docker Compose](../deploy/local/README.md): run 
 
 `yarn setup` restarts a running local MongoDB container or starts it if stopped/absent, then waits for health. `yarn start` runs setup before its client build and server launch, aborting on any setup failure. `yarn dev` and `yarn start:prod` do not run setup automatically; production connects to separately provisioned infrastructure.
 
+For a deliberate data reset, stop application processes, keep MongoDB running, and run `yarn db:wipe`. The command loads root `.env` without overriding existing environment variables, requires explicit `MONGODB_URI`/`MONGODB_DATABASE`, displays the target without credentials, and asks for the exact database name. Noninteractive calls need `--confirm <database-name>`. It drops only that database, including accounts, PII and schema versions; it rejects `admin`, `config`, `local`, invalid/missing names and mismatched confirmation. Docker infrastructure and other databases are unaffected. Restart the application after wiping to restore indexes and seed the baseline; running application processes must not continue using a dropped registry.
+
 ### Alternative: installed MongoDB server
 
 Use a local MongoDB replica set for transactions. An existing standalone `mongod` does not become a replica set just because the URI contains `replicaSet=cvantage`. The server must start with `--replSet cvantage`, then be initialized.

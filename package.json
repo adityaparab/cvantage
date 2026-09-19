@@ -10,6 +10,7 @@
     "db:up": "docker compose --env-file deploy/local/compose.env -f deploy/local/compose.yaml up -d --wait --wait-timeout 120",
     "db:down": "docker compose --env-file deploy/local/compose.env -f deploy/local/compose.yaml down",
     "db:logs": "docker compose --env-file deploy/local/compose.env -f deploy/local/compose.yaml logs -f mongodb",
+    "db:wipe": "node scripts/wipe-database.cjs",
     "install:all": "yarn install && yarn --cwd client install",
     "dev": "concurrently -k -n api,web -c blue,green \"yarn dev:server\" \"yarn dev:client\"",
     "dev:server": "nest start --watch",

@@ -32,6 +32,8 @@ yarn db:up      # Ensure MongoDB is running without deliberately restarting it
 
 Named Docker volumes preserve data across restarts and container recreation. Initialization is idempotent: it creates a replica-set configuration only on a fresh volume and rejects a conflicting existing configuration. The Compose project name is `cvantage-local`; it has its own network and volumes. There are no host data-directory mounts. Do not add `--volumes` to `down` unless you intend to delete this local database.
 
+To wipe only the configured application database, stop the application and run `yarn db:wipe`, then confirm the displayed database name. Unlike `db:down`, this deletes application data; it preserves the container, volumes, replica-set configuration and other databases. It uses the root `.env`/environment's `MONGODB_URI` and explicit `MONGODB_DATABASE`, so check the displayed server and database. Restart the application afterward to recreate indexes and seed `schema/schema.json`. Noninteractive use requires `yarn db:wipe --confirm <database-name>`; system databases and mismatched confirmations are rejected.
+
 `deploy/local/compose.env` contains only non-secret deployment settings. The commands explicitly select it, so application `.env` secrets are not loaded into Compose or passed into MongoDB. To use a different host port:
 
 ```sh

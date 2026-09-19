@@ -7,7 +7,7 @@ The implemented workflow was verified locally with synthetic data. These checks 
 | Backend and frontend builds | Pass |
 | Server ESLint and client Oxlint | Pass |
 | Backend unit tests | 45 pass |
-| MongoDB/HTTP/graph integration tests | 41 pass against an isolated local replica set |
+| MongoDB/HTTP/graph integration tests | 49 pass against an isolated local replica set |
 | React behavior tests | 15 pass |
 | Real Chromium UI journey | Pass: register, upload DOCX, redact, five-attempt mapping review, approve, edit, tailor, approve variant, download PDF/DOCX, preview PDF, restore session, logout |
 | Browser workflow privacy | 15 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
@@ -48,3 +48,7 @@ Verified `yarn setup` against a uniquely named disposable Compose project: an ab
 ## Editable redaction review — 2026-09-19
 
 Full build/both linters, 45 unit tests, 41 MongoDB/HTTP integration tests and 15 client tests passed. Integration checks prove no model call before approval, edited text persistence, canonical marker delivery, repeated PII checks, and stale-approval rejection. Client tests cover selection redaction, checkbox reset after edits, failed approval preserving edits, and links recovering to the appropriate stage. The Chromium journey verifies separate upload review, reload/notification links, typed markers, manual edits, no pre-approval model requests, and the complete parsing/review/tailoring/export flow. Desktop/mobile review screenshots were inspected; artifacts are in `/tmp/cvantage-redaction-browser`. Marker normalization is local and handles explicit aliases; unknown placeholders remain unchanged. Live-provider evaluation remains separate.
+
+## Database wipe command — 2026-09-19
+
+All 49 integration tests pass, including 8 database-wipe cases. Disposable databases prove exact confirmation is required, system/invalid names are refused, credentials are not exposed on configuration errors, and wiping leaves sibling databases intact. The next real database-service initialization recreates indexes and seeds the exact supplied schema once. The actual `yarn db:wipe` terminal prompt was exercised for cancellation and exact-name confirmation. Environment precedence (including explicit empty values) was verified before testing to ensure `.env` could not redirect a disposable target. Script syntax/formatting and server lint pass. The user's database was never wiped; temporary test data and the isolated test MongoDB instance were removed.
