@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 0–18 are merged. Milestone 19 is implemented and verified on `feat/resume-field-deletion`; milestone 20 follows on its own branch.
-**Next action:** add field/group trash controls, verify and merge; then fix immediate redaction text display and loading/retry behavior.
+**Current state:** milestones 0–19 are merged, including deletion controls in [PR #20](https://github.com/adityaparab/cvantage/pull/20). Milestone 20 is implemented and verified on `feat/redaction-review-loading`.
+**Next action:** live provider evaluation and Railway remain separate. [PR #21](https://github.com/adityaparab/cvantage/pull/21) records the redaction loading fix and its merge status.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -34,7 +34,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 18. Resume review with inline editing | Complete | 5, 10, 13 | Full build/client lint; 21 client tests; Chromium inline review/source/tailored edits, touch/keyboard and exports; light/dark mobile inspection |
 
 | 19. Delete resume fields and groups | Complete | 18 | Full build/client lint; 25 client tests; Chromium deletion/undo and persisted deletions through tailoring/export |
-| 20. Redaction review readiness | Planned | 16 | Immediate upload result, loading indicator, retry/refresh and navigation regressions |
+| 20. Redaction review readiness | Complete | 16 | Full build/client lint; 32 client tests; Chromium first navigation without refetch, delayed readiness/progress, and full review-to-export journey |
 
 ### How to maintain progress
 
@@ -325,9 +325,9 @@ Completion: the command drops only the explicitly configured database, protects 
 
 ### 20. Redaction review readiness
 
-- [ ] Display the upload response immediately using memory-only state; load direct links with an explicit progress indicator.
-- [ ] Refresh unavailable text, expose recovery for failed/stalled requests and preserve edits once ready.
-- [ ] Verify first navigation without reload, delayed content, retries and existing redaction/approval privacy boundaries; update documentation and PR tracking.
+- [x] Display the upload response immediately using memory-only state; load direct links with an explicit progress indicator.
+- [x] Refresh unavailable text, expose recovery for failed/stalled requests and preserve edits once ready.
+- [x] Verify first navigation without reload, delayed content, retries and existing redaction/approval privacy boundaries; update documentation and PR tracking.
 
 ## Verification commands
 
@@ -390,6 +390,8 @@ yarn test:models
 
 | Inline resume review | Shared readable document layout, per-field drafts/check/cross, collapsed empty details, keyboard/touch controls and unfinished-edit guards | Full build/client lint; 21 client tests; complete synthetic Chromium workflow and desktop/mobile visual inspection | [PR #19](https://github.com/adityaparab/cvantage/pull/19), `feat/inline-resume-review`; merge status recorded on GitHub |
 
-| Delete resume fields/groups | Shared trash controls, single-deletion undo, required-field/edit protection, unchanged schemas | Full build/client lint; 25 client tests; Chromium proves field/group deletions survive approval, reload and tailoring; desktop/mobile inspection | `feat/resume-field-deletion`; merge PR before redaction loading fix |
+| Delete resume fields/groups | Shared trash controls, single-deletion undo, required-field/edit protection, unchanged schemas | Full build/client lint; 25 client tests; Chromium proves field/group deletions survive approval, reload and tailoring; desktop/mobile inspection | [PR #20](https://github.com/adityaparab/cvantage/pull/20) merged as `a59beaf`; next: redaction loading fix |
+
+| Redaction review readiness | Route-persistent memory-only upload handoff; loading indicator, automatic readiness polling, timeout/retry, aborted obsolete requests and edit preservation | Full build/client lint; 32 client tests; Chromium verifies first visit without refetch or reload, delayed content and complete workflow; loading screenshot inspected | [PR #21](https://github.com/adityaparab/cvantage/pull/21), `feat/redaction-review-loading`; merge status recorded on GitHub |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

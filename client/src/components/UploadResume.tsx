@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from '../lib/api';
+import type { PreparedUpload } from '../lib/useRedactionReview';
+import LoadingProgress from './LoadingProgress';
 interface Job {
   _id: string;
   status: string;
@@ -9,7 +11,7 @@ interface Job {
 export default function UploadResume({
   onUploaded,
 }: {
-  onUploaded: (id: string) => void;
+  onUploaded: (id: string, prepared?: PreparedUpload) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -50,14 +52,11 @@ export default function UploadResume({
       }),
     );
     try {
-      const result = await api<{
-        jobId: string;
-        resumeId: string;
-        source: string;
-        revision: number;
-        status: string;
-      }>('/resumes/upload', { method: 'POST', body: payload });
-      onUploaded(result.jobId);
+      const result = await api<PreparedUpload>('/resumes/upload', {
+        method: 'POST',
+        body: payload,
+      });
+      onUploaded(result.jobId, result);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Upload failed');
     } finally {
@@ -102,6 +101,9 @@ export default function UploadResume({
           PDF, DOCX, or DOC · up to 20 MB. The original file is discarded after
           extraction.
         </p>
+        {busy && (
+          <LoadingProgress message="Uploading, extracting and redacting your resume…" />
+        )}
         <button disabled={busy}>
           {busy ? 'Reading your resume…' : 'Upload resume'}
         </button>

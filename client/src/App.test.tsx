@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import App from './App';
+import UploadReviewProvider from './components/UploadReviewProvider';
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -30,7 +31,9 @@ it('signs in and loads the private resume workspace', async () => {
   vi.stubGlobal('fetch', fetcher);
   render(
     <MemoryRouter>
-      <App />
+      <UploadReviewProvider>
+        <App />
+      </UploadReviewProvider>
     </MemoryRouter>,
   );
   fireEvent.change(await screen.findByLabelText('Email'), {
@@ -57,7 +60,9 @@ it('shows server errors without entering the workspace', async () => {
   );
   render(
     <MemoryRouter>
-      <App />
+      <UploadReviewProvider>
+        <App />
+      </UploadReviewProvider>
     </MemoryRouter>,
   );
   fireEvent.change(await screen.findByLabelText('Email'), {
