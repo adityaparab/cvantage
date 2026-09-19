@@ -135,7 +135,8 @@ The judge gate passes only when the response is valid, `verdict` is `accept`, al
 
 - Present parsed resumes as structured, readable resume content. Each field, including newly discovered fields, has a right-aligned pencil on hover or keyboard focus (always visible on touch). Open only that field for editing, with check/cross controls to accept/cancel its draft; Escape also cancels. Keep empty optional details available on demand. Require the active field edit to be accepted or cancelled before saving, approving, tailoring or exporting that content.
 - Offer trash-bin controls for individual fields, nested groups and array entries in parsed/source resume reviews, with undo before later changes. Delete resume values only; never delete schema definitions. Protect required values and keep factual deletions out of tailored variants.
-- Use the user's corrected resume as the authoritative input for tailoring to a supplied job description.
+- Use the user's corrected resume as the authoritative input for tailoring to a supplied job description. Accept pasted text or import a public HTTPS job URL into editable text; require privacy confirmation before model calls.
+- Stream separate resume analysis and job-description analysis before generating wording suggestions and factual review. Show every step, its status and bounded retries; keep schemas internal. Analysis outputs are bounded structured summaries, never private reasoning.
 - Tailor wording and emphasis without inventing qualifications, employers, dates, skills, or achievements.
 - Preserve the source structured resume data and create a separate tailored result for review and download. This does not mean retaining the original uploaded file. Generated suggestions must not overwrite user corrections automatically.
 - Export PDF or DOCX on demand, combining the chosen structured result with the separately stored PII.

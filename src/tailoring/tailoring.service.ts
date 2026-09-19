@@ -1,3 +1,6 @@
+import { analysisSchema, RESUME_ANALYSIS, JOB_ANALYSIS } from './analysis';
+import type { Analysis } from './analysis';
+import type { StepId } from '../activity/activity.types';
 import { trackedGenerate } from '../activity/model-progress';
 import type { StepRun, TailoringActivity } from '../activity/activity.types';
 import type { Pii } from '../documents/pii';
@@ -31,6 +34,7 @@ export interface Variant {
   sourceRevision: number;
   schemaVersion: number;
   sourceData: ResumeData;
+  analyses?: { resume: Analysis; job: Analysis };
   data: ResumeData;
   revision: number;
   status: 'review_required' | 'reviewed';
@@ -178,11 +182,38 @@ export class TailoringService {
         normalizeRedactionMarkers(body.data.jobDescription),
         pii,
       );
+      const analyze = async (
+        instructions: string,
+        input: unknown,
+        step: StepId,
+      ) => {
+        const result = analysisSchema.safeParse(
+          await this.call('worker', instructions, input, pii, activity, step),
+        );
+        if (!result.success || containsPii(result.data, pii))
+          throw new BadRequestException(
+            'Analysis could not be validated. Try again with a clearer job description.',
+          );
+        return result.data;
+      };
+      const analyses = {
+        resume: await analyze(
+          RESUME_ANALYSIS,
+          { sourceResume: resume.data },
+          'resume_analysis',
+        ),
+        job: await analyze(
+          JOB_ANALYSIS,
+          { jobDescription: description },
+          'job_analysis',
+        ),
+      };
       const candidate = await this.call(
         'worker',
         prompt,
         {
           sourceResume: resume.data,
+          analyses,
           schema: JSON.parse(
             redactPii(JSON.stringify(schema.definition), pii),
           ) as unknown,
@@ -226,6 +257,7 @@ export class TailoringService {
         sourceRevision: resume.revision,
         schemaVersion: resume.schemaVersion,
         sourceData: resume.data,
+        analyses,
         data: candidate,
         revision: 0,
         status: 'review_required',
@@ -285,12 +317,13 @@ export class TailoringService {
     data: unknown,
     pii: Pii,
     activity?: TailoringActivity,
+    step: StepId = `tailoring_${role}`,
   ) {
     try {
       if (!activity)
         return await this.models.generate(role, instructions, data);
       const run: StepRun = {
-        step: `tailoring_${role}`,
+        step,
         attempt: 1,
         status: 'active',
         retries: 0,

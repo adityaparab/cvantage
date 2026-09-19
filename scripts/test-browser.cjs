@@ -45,6 +45,13 @@ const proxy = http.createServer(async (request, response) => {
     let result;
     if (instructions.startsWith('Inspect source for fields'))
       result = { additions: [] };
+    else if (instructions.startsWith('Analyze '))
+      result = {
+        summary: instructions.startsWith('Analyze the source')
+          ? 'Experience building internal tools.'
+          : 'Role focused on internal tools.',
+        findings: ['Reliable tools and software delivery.'],
+      };
     else if (instructions.startsWith('Map ALL')) result = source;
     else if (instructions.startsWith('Tailor sourceResume')) {
       assert.equal(
@@ -669,6 +676,17 @@ async function main() {
       .check();
     await page.getByRole('button', { name: 'Create tailored version' }).click();
     await page.waitForURL('**/activity/*');
+    await page
+      .getByRole('heading', { name: 'Analyze resume', exact: true })
+      .waitFor();
+    await page.locator('[aria-label="Analyze resume output"]').waitFor();
+    await page
+      .locator('[aria-label="Analyze job description output"]')
+      .waitFor();
+    await page.screenshot({
+      path: join(output, 'tailoring-analysis.png'),
+      fullPage: true,
+    });
     await page.getByRole('link', { name: 'Review tailored resume' }).click();
     await page
       .getByRole('heading', { name: 'Review your tailored version' })

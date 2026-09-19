@@ -1,3 +1,7 @@
+import {
+  JobDescriptionService,
+  JobPageNetwork,
+} from './tailoring/job-description.service';
 import { ActivityController } from './activity/activity.controller';
 import { ActivityService } from './activity/activity.service';
 import { ExportsService } from './exports/exports.service';
@@ -51,6 +55,8 @@ import { AppService } from './app.service';
     ParsingService,
     EditingService,
     TailoringService,
+    JobDescriptionService,
+    JobPageNetwork,
     ExportsService,
     { provide: ModelGateway, useClass: LiteLlmGateway },
   ],

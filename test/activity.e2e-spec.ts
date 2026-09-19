@@ -255,6 +255,8 @@ describe('private streamed workflow activity', () => {
       updatedAt: new Date(),
     });
     generate
+      .mockResolvedValueOnce({ summary: 'Engineer experience', findings: [] })
+      .mockResolvedValueOnce({ summary: 'Software role', findings: [] })
       .mockImplementationOnce(async (_role, _instructions, _data, observe) => {
         await observe?.({ type: 'delta', text: JSON.stringify(data) });
         return data;
@@ -273,7 +275,13 @@ describe('private streamed workflow activity', () => {
       activity = await activities.get(job.ownerId, started.workflowId);
     }
     expect(activity.status).toBe('review_required');
-    expect(activity.steps[0]).toMatchObject({
+    expect(activity.steps.map((step) => step.step)).toEqual([
+      'resume_analysis',
+      'job_analysis',
+      'tailoring_worker',
+      'tailoring_judge',
+    ]);
+    expect(activity.steps[2]).toMatchObject({
       status: 'success',
       output: 'Software engineer',
     });

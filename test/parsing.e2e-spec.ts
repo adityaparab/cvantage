@@ -508,6 +508,8 @@ describe('durable worker/judge parsing', () => {
       basics: { summary: 'Software developer focused on tools' },
     };
     generate
+      .mockResolvedValueOnce({ summary: 'Engineer experience', findings: [] })
+      .mockResolvedValueOnce({ summary: 'Software role', findings: [] })
       .mockResolvedValueOnce(tailored)
       .mockResolvedValueOnce(judge('mapping'));
     const variant = await tailoring.create(job.ownerId, job.resumeId, {
@@ -569,10 +571,13 @@ describe('durable worker/judge parsing', () => {
         approve: true,
       }),
     ).rejects.toThrow();
-    generate.mockResolvedValueOnce({
-      ...changed,
-      skills: [{ name: 'Languages', keywords: ['Invented Skill'] }],
-    });
+    generate
+      .mockResolvedValueOnce({ summary: 'Engineer experience', findings: [] })
+      .mockResolvedValueOnce({ summary: 'Software role', findings: [] })
+      .mockResolvedValueOnce({
+        ...changed,
+        skills: [{ name: 'Languages', keywords: ['Invented Skill'] }],
+      });
     await expect(
       tailoring.create(job.ownerId, job.resumeId, {
         revision: 1,
