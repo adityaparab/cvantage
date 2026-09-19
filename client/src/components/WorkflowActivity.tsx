@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
-import { activityStatus, activityTitle } from '../lib/activity';
+import { activityHref, activityStatus, activityTitle } from '../lib/activity';
 import type { Activity, StepRun } from '../lib/activity';
 import ReviewPanel from './ReviewPanel';
 const parsingSteps = [
@@ -140,9 +140,10 @@ export default function WorkflowActivity({
   const [connection, setConnection] = useState('Connecting…');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const close = useCallback(() => {
     onComplete();
-    navigate('/');
+    navigate('/resumes');
   }, [navigate, onComplete]);
   useEffect(() => {
     let active = true;
@@ -234,11 +235,16 @@ export default function WorkflowActivity({
     !activity.piiConfirmed &&
     activity.status !== 'completed'
   )
-    return <Navigate to={`/uploads/${id}/review`} replace />;
+    return <Navigate to={`/resumes/uploads/${id}/review`} replace />;
+  if (activity && pathname.startsWith('/activity/'))
+    return <Navigate to={activityHref(activity)} replace />;
   return (
     <div className="workflow-page">
-      <Link className="text-button" to="/">
-        ← Back to workspace
+      <Link
+        className="text-button"
+        to={activity?.kind === 'tailoring' ? '/tailoring' : '/resumes'}
+      >
+        ← Back to {activity?.kind === 'tailoring' ? 'tailoring' : 'resumes'}
       </Link>
       <p className="eyebrow">WORKFLOW ACTIVITY</p>
       <h1>{activity ? activityTitle(activity) : 'Workflow activity'}</h1>
@@ -284,7 +290,7 @@ export default function WorkflowActivity({
           {activity.variantId && (
             <Link
               className="action-link"
-              to={`/resumes/${activity.resumeId}?variant=${activity.variantId}`}
+              to={`/tailoring?resume=${activity.resumeId}&variant=${activity.variantId}`}
             >
               Review tailored resume
             </Link>

@@ -125,6 +125,12 @@ The judge gate passes only when the response is valid, `verdict` is `accept`, al
 - Every parsed resume records the schema version used for extraction. Schema updates do not modify or migrate existing records. Read, edit, tailor, and export existing records using their recorded version.
 - Publish approved versions atomically. If another workflow publishes first, report a processing failure without showing a schema or running another modification/validation pass. Never lose fields, overwrite a published version, or restart the single-pass budget because of a conflict. Interrupted or already-consumed schema passes must not be replayed after restart.
 
+## Navigation and resume management
+
+- Primary navigation separates **Resumes** (`/resumes`) and **Tailoring** (`/tailoring`).
+- The resume section contains the list, upload, redaction confirmation, extraction activity and source editing/export. Tailoring starts in its own section by selecting a saved resume.
+- Deleting a resume requires explicit confirmation and the latest revision. Remove its separate contact details, tailored variants and workflow records atomically; concurrent work must not recreate deleted records.
+
 ## Editing, tailoring, and download
 
 - Present parsed resumes as structured, readable resume content. Each field, including newly discovered fields, has a right-aligned pencil on hover or keyboard focus (always visible on touch). Open only that field for editing, with check/cross controls to accept/cancel its draft; Escape also cancels. Keep empty optional details available on demand. Require the active field edit to be accepted or cancelled before saving, approving, tailoring or exporting that content.

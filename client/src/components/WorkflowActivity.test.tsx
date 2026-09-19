@@ -65,7 +65,7 @@ it('opens an aligned workflow link dropdown and restores focus on Escape', async
   });
   fireEvent.click(button);
   const link = screen.getByRole('link', { name: /Resume parsing/ });
-  expect(link.getAttribute('href')).toBe('/activity/workflow');
+  expect(link.getAttribute('href')).toBe('/resumes/activity/workflow');
   expect(screen.getByText('In progress')).toBeTruthy();
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(screen.queryByRole('region', { name: 'Active workflows' })).toBeNull();

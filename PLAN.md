@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 0–19 are merged, including deletion controls in [PR #20](https://github.com/adityaparab/cvantage/pull/20). Milestone 20 is implemented and verified on `feat/redaction-review-loading`.
-**Next action:** live provider evaluation and Railway remain separate. [PR #21](https://github.com/adityaparab/cvantage/pull/21) records the redaction loading fix and its merge status.
+**Current state:** milestones 0–20 are merged. Milestone 21 is in progress on `feat/resume-management-navigation`.
+**Next action:** split resume CRUD and tailoring navigation, then implement URL input and streamed analysis, then suggestion/application subroutes. Each milestone gets a dedicated branch and merged PR.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -32,9 +32,12 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 16. Editable redaction review before parsing | Complete | 3, 12 | Full build/both linters; 45 unit, 41 integration, 15 client tests; browser review → activity → export and desktop/mobile inspection |
 | 17. Explicit database wipe command | Complete | 15 | 49 integration tests including 8 wipe regressions; actual interactive yarn command cancellation/confirmation; user database untouched |
 | 18. Resume review with inline editing | Complete | 5, 10, 13 | Full build/client lint; 21 client tests; Chromium inline review/source/tailored edits, touch/keyboard and exports; light/dark mobile inspection |
-
 | 19. Delete resume fields and groups | Complete | 18 | Full build/client lint; 25 client tests; Chromium deletion/undo and persisted deletions through tailoring/export |
 | 20. Redaction review readiness | Complete | 16 | Full build/client lint; 32 client tests; Chromium first navigation without refetch, delayed readiness/progress, and full review-to-export journey |
+
+| 21. Resume management and primary navigation | Complete | 20 | Dedicated resume list/upload/edit/delete and separate tailoring entry |
+| 22. Job URL input and streamed analysis | Planned | 21 | Safe public job-page import and distinct resume/JD analysis streams |
+| 23. Tailoring suggestions and result routes | Planned | 22 | Select/apply suggestions and review updated resume under nested tailoring URLs |
 
 ### How to maintain progress
 
@@ -329,6 +332,26 @@ Completion: the command drops only the explicitly configured database, protects 
 - [x] Refresh unavailable text, expose recovery for failed/stalled requests and preserve edits once ready.
 - [x] Verify first navigation without reload, delayed content, retries and existing redaction/approval privacy boundaries; update documentation and PR tracking.
 
+### 21. Resume management and primary navigation
+
+- [x] Add primary Resumes/Tailoring navigation and a persistent authenticated route layout.
+- [x] Give resumes dedicated list, upload, redaction, extraction and editing routes; remove tailoring from resume detail.
+- [x] Complete resume CRUD with owner/revision-safe deletion of contact data, variants and workflows; fence concurrent tailoring writes.
+- [x] Preserve legacy links, verify navigation, deletion ownership/concurrency and full browser flow, then merge its PR.
+
+### 22. Job URL input and streamed analysis
+
+- [ ] Import bounded public job-page text from a URL for user review before any model call.
+- [ ] Stream separate resume and job-description analysis, followed by wording suggestions and factual review; preserve privacy/attempt limits.
+- [ ] Verify URL network boundaries, analysis contracts, streamed progress and existing workflows, then merge its PR.
+
+### 23. Tailoring suggestions and result routes
+
+- [ ] Add `/tailoring` resume selection and job input; keep analysis, suggestions and result screens beneath dedicated workflow/variant subroutes.
+- [ ] Present individual before/after suggestions with explicit selection/application, preserving source data and immutable facts.
+- [ ] Show the updated resume separately with inline review, approval and PDF/DOCX export; support reloads, direct links and active workflow notifications.
+- [ ] Verify complete text/URL-to-analysis-to-suggestions-to-result journeys, update docs/plan and merge its PR.
+
 ## Verification commands
 
 Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
@@ -394,4 +417,8 @@ yarn test:models
 
 | Redaction review readiness | Route-persistent memory-only upload handoff; loading indicator, automatic readiness polling, timeout/retry, aborted obsolete requests and edit preservation | Full build/client lint; 32 client tests; Chromium verifies first visit without refetch or reload, delayed content and complete workflow; loading screenshot inspected | [PR #21](https://github.com/adityaparab/cvantage/pull/21), `feat/redaction-review-loading`; merge status recorded on GitHub |
 
+| Resume management and navigation | Dedicated resume library/upload/review/edit routes and separate tailoring selector; persistent primary navigation; owner/revision-safe cascading deletion and concurrent-write fencing | Full build, both linters, 45 unit, 51 integration and 33 client tests; complete synthetic Chromium journey | `feat/resume-management-navigation`; PR link and merge status recorded below |
+
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
+
+Resume management PR: [#22](https://github.com/adityaparab/cvantage/pull/22); its linked status records the merge.

@@ -109,7 +109,20 @@ export class TailoringService {
     };
     const activities =
       this.database.db.collection<TailoringActivity>('workflowActivities');
-    await activities.insertOne(activity);
+    const session = this.database.client.startSession();
+    try {
+      await session.withTransaction(async () => {
+        await this.resumes.fenceWorkflow(
+          ownerId,
+          resumeId,
+          resume.revision,
+          session,
+        );
+        await activities.insertOne(activity, { session });
+      });
+    } finally {
+      await session.endSession();
+    }
     // Only the redacted progress is durable; job descriptions remain in memory.
     void this.create(ownerId, resumeId, input, activity)
       .then(async (variant) => {
@@ -220,7 +233,35 @@ export class TailoringService {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      await this.variants.insertOne(variant);
+      const session = this.database.client.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await this.resumes.fenceWorkflow(
+            ownerId,
+            resumeId,
+            resume.revision,
+            session,
+          );
+          if (
+            activity &&
+            !(await this.database.db
+              .collection<TailoringActivity>('workflowActivities')
+              .findOne(
+                {
+                  _id: activity._id,
+                  ownerId,
+                  status: 'running',
+                  expiresAt: { $gt: new Date() },
+                },
+                { session },
+              ))
+          )
+            throw new ConflictException('Workflow was deleted or expired');
+          await this.variants.insertOne(variant, { session });
+        });
+      } finally {
+        await session.endSession();
+      }
       return variant;
     } catch (error) {
       if (activity) {

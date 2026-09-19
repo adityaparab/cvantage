@@ -31,13 +31,16 @@ afterEach(() => {
 });
 function renderReview(initial?: PreparedUpload) {
   render(
-    <MemoryRouter initialEntries={['/uploads/job/review']}>
+    <MemoryRouter initialEntries={['/resumes/uploads/job/review']}>
       <Routes>
         <Route
-          path="/uploads/job/review"
+          path="/resumes/uploads/job/review"
           element={<PrivacyReview id="job" initial={initial} />}
         />
-        <Route path="/activity/job" element={<h1>Parsing activity</h1>} />
+        <Route
+          path="/resumes/activity/job"
+          element={<h1>Parsing activity</h1>}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -118,14 +121,14 @@ it('redirects an unapproved activity link to upload review before showing parsin
     steps: [],
   });
   render(
-    <MemoryRouter initialEntries={['/activity/job']}>
+    <MemoryRouter initialEntries={['/resumes/activity/job']}>
       <Routes>
         <Route
-          path="/activity/job"
+          path="/resumes/activity/job"
           element={<WorkflowActivity id="job" onComplete={() => {}} />}
         />
         <Route
-          path="/uploads/job/review"
+          path="/resumes/uploads/job/review"
           element={<h1>Upload privacy review</h1>}
         />
       </Routes>
@@ -273,12 +276,12 @@ it('hands off text across route remounts and clears it when leaving review', asy
               source: 'PII_NAME fresh source',
               revision: 0,
             });
-            navigate('/uploads/job/review');
+            navigate('/resumes/uploads/job/review');
           }}
         >
           Finish upload
         </button>
-        <Link to="/uploads/job/review">Reopen upload</Link>
+        <Link to="/resumes/uploads/job/review">Reopen upload</Link>
       </>
     );
   }
@@ -287,11 +290,11 @@ it('hands off text across route remounts and clears it when leaving review', asy
     return <PrivacyReview id="job" initial={preparedUpload} />;
   }
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/resumes']}>
       <UploadReviewProvider>
         <Routes>
-          <Route path="/" element={<UploadStep />} />
-          <Route path="/uploads/job/review" element={<ReviewStep />} />
+          <Route path="/resumes" element={<UploadStep />} />
+          <Route path="/resumes/uploads/job/review" element={<ReviewStep />} />
         </Routes>
       </UploadReviewProvider>
     </MemoryRouter>,
@@ -301,7 +304,7 @@ it('hands off text across route remounts and clears it when leaving review', asy
     screen.getByLabelText<HTMLTextAreaElement>('Redacted resume text').value,
   ).toBe('PII_NAME fresh source');
   expect(api).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('link', { name: '← Back to workspace' }));
+  fireEvent.click(screen.getByRole('link', { name: '← Back to resumes' }));
   await screen.findByText('No cached text');
   fireEvent.click(screen.getByRole('link', { name: 'Reopen upload' }));
   const field = await screen.findByLabelText<HTMLTextAreaElement>(

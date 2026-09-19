@@ -83,7 +83,7 @@ export default function TailoringPanel({
           }),
         },
       );
-      navigate(`/activity/${result.workflowId}`);
+      navigate(`/tailoring/activity/${result.workflowId}`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Tailoring failed');
     } finally {

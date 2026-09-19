@@ -6,6 +6,7 @@ import {
 import type { ResumeData } from '../contracts/resume-schema';
 import { DatabaseService } from './database.service';
 import type { PiiRecord, ResumeRecord } from './records';
+import type { ClientSession } from 'mongodb';
 
 @Injectable()
 export class ResumeRepository {
@@ -13,7 +14,7 @@ export class ResumeRepository {
   list(ownerId: string) {
     return this.database.db
       .collection<ResumeRecord>('resumes')
-      .find({ ownerId })
+      .find({ ownerId }, { projection: { workflowWrites: 0 } })
       .sort({ updatedAt: -1 })
       .limit(100)
       .toArray();
@@ -21,7 +22,7 @@ export class ResumeRepository {
   async get(ownerId: string, id: string) {
     const record = await this.database.db
       .collection<ResumeRecord>('resumes')
-      .findOne({ _id: id, ownerId });
+      .findOne({ _id: id, ownerId }, { projection: { workflowWrites: 0 } });
     if (!record) throw new NotFoundException('Resume not found');
     return record;
   }
@@ -29,6 +30,54 @@ export class ResumeRepository {
     return this.database.db
       .collection<PiiRecord>('resumePii')
       .findOne({ ownerId, resumeId });
+  }
+  // Serialize workflow inserts with deletion without changing the content revision.
+  async fenceWorkflow(
+    ownerId: string,
+    id: string,
+    revision: number,
+    session: ClientSession,
+  ) {
+    const result = await this.database.db
+      .collection<ResumeRecord>('resumes')
+      .updateOne(
+        { _id: id, ownerId, revision },
+        { $inc: { workflowWrites: 1 } },
+        { session },
+      );
+    if (!result.matchedCount)
+      throw new ConflictException(
+        'Resume changed or was deleted; reload before tailoring',
+      );
+  }
+  async delete(ownerId: string, id: string, revision: number) {
+    const session = this.database.client.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const record = await this.database.db
+          .collection<ResumeRecord>('resumes')
+          .findOne({ _id: id, ownerId }, { session });
+        if (!record) throw new NotFoundException('Resume not found');
+        if (record.revision !== revision)
+          throw new ConflictException('Resume changed; reload before deleting');
+        await this.database.db
+          .collection<ResumeRecord>('resumes')
+          .deleteOne({ _id: id, ownerId, revision }, { session });
+        for (const name of [
+          'resumePii',
+          'variants',
+          'workflowActivities',
+          'parseJobs',
+        ]) {
+          await this.database.db
+            .collection(name)
+            .deleteMany({ ownerId, resumeId: id }, { session });
+        }
+      });
+      return { deleted: true };
+    } finally {
+      await session.endSession();
+    }
   }
   async update(
     ownerId: string,

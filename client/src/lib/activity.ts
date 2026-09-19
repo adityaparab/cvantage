@@ -44,6 +44,8 @@ export function activityHref(activity: Activity) {
   return activity.kind === 'parsing' &&
     !activity.piiConfirmed &&
     activity.status !== 'completed'
-    ? `/uploads/${activity.id}/review`
-    : `/activity/${activity.id}`;
+    ? `/resumes/uploads/${activity.id}/review`
+    : activity.kind === 'tailoring'
+      ? `/tailoring/activity/${activity.id}`
+      : `/resumes/activity/${activity.id}`;
 }

@@ -14,7 +14,9 @@ export default function UploadReviewProvider({
   // The provider outlives route remounts; the text only lives until leaving its review.
   useEffect(() => {
     setPreparedUpload((current) =>
-      current && pathname === `/uploads/${current.jobId}/review`
+      current &&
+      (pathname === `/resumes/uploads/${current.jobId}/review` ||
+        pathname === `/uploads/${current.jobId}/review`)
         ? current
         : undefined,
     );

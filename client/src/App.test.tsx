@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import App from './App';
+import AppRoutes from './AppRoutes';
 import UploadReviewProvider from './components/UploadReviewProvider';
 afterEach(() => {
   cleanup();
@@ -32,7 +32,7 @@ it('signs in and loads the private resume workspace', async () => {
   render(
     <MemoryRouter>
       <UploadReviewProvider>
-        <App />
+        <AppRoutes />
       </UploadReviewProvider>
     </MemoryRouter>,
   );
@@ -44,7 +44,17 @@ it('signs in and loads the private resume workspace', async () => {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
   expect(await screen.findByText('Your resumes')).toBeTruthy();
-  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(5));
+  await waitFor(() =>
+    expect(fetcher.mock.calls.some(([url]) => url === '/api/resumes')).toBe(
+      true,
+    ),
+  );
+  expect(
+    screen.getByRole('navigation', { name: 'Primary navigation' }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole('link', { name: 'Tailoring' }).getAttribute('href'),
+  ).toBe('/tailoring');
   expect(fetcher.mock.calls[1][0]).toBe('/api/auth/login');
   expect(fetcher.mock.calls[2][1].headers['X-CSRF-Token']).toBe('token');
 });
@@ -61,7 +71,7 @@ it('shows server errors without entering the workspace', async () => {
   render(
     <MemoryRouter>
       <UploadReviewProvider>
-        <App />
+        <AppRoutes />
       </UploadReviewProvider>
     </MemoryRouter>,
   );

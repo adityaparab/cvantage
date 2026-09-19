@@ -7,7 +7,10 @@ import {
   UseGuards,
   Body,
   Patch,
+  Delete,
+  BadRequestException,
 } from '@nestjs/common';
+import { z } from 'zod';
 import { ResumeRepository } from '../database/resume.repository';
 import { SessionGuard } from '../auth/session.guard';
 import type { AuthRequest } from '../auth/session.guard';
@@ -30,6 +33,19 @@ export class ResumesController {
     @Body() body: unknown,
   ) {
     return this.editing.update(req.session.ownerId, id, body);
+  }
+  @Delete(':id') delete(
+    @Req() req: AuthRequest,
+    @Param('id') id: string,
+    @Body() input: unknown,
+  ) {
+    const body = z
+      .object({ revision: z.number().int().min(0) })
+      .strict()
+      .safeParse(input);
+    if (!body.success)
+      throw new BadRequestException('Provide the current resume revision');
+    return this.resumes.delete(req.session.ownerId, id, body.data.revision);
   }
   @Patch(':id/pii') updatePii(
     @Req() req: AuthRequest,
