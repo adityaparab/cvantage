@@ -9,7 +9,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 ## Status and next action
 
 **Current state:** milestones 0–19 are merged, including deletion controls in [PR #20](https://github.com/adityaparab/cvantage/pull/20). Milestone 20 is implemented and verified on `feat/redaction-review-loading`.
-**Next action:** merge the redaction loading PR; live provider evaluation and Railway remain separate.
+**Next action:** live provider evaluation and Railway remain separate. [PR #21](https://github.com/adityaparab/cvantage/pull/21) records the redaction loading fix and its merge status.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -392,6 +392,6 @@ yarn test:models
 
 | Delete resume fields/groups | Shared trash controls, single-deletion undo, required-field/edit protection, unchanged schemas | Full build/client lint; 25 client tests; Chromium proves field/group deletions survive approval, reload and tailoring; desktop/mobile inspection | [PR #20](https://github.com/adityaparab/cvantage/pull/20) merged as `a59beaf`; next: redaction loading fix |
 
-| Redaction review readiness | Route-persistent memory-only upload handoff; loading indicator, automatic readiness polling, timeout/retry, aborted obsolete requests and edit preservation | Full build/client lint; 32 client tests; Chromium verifies first visit without refetch or reload, delayed content and complete workflow; loading screenshot inspected | `feat/redaction-review-loading`; create/merge PR |
+| Redaction review readiness | Route-persistent memory-only upload handoff; loading indicator, automatic readiness polling, timeout/retry, aborted obsolete requests and edit preservation | Full build/client lint; 32 client tests; Chromium verifies first visit without refetch or reload, delayed content and complete workflow; loading screenshot inspected | [PR #21](https://github.com/adityaparab/cvantage/pull/21), `feat/redaction-review-loading`; merge status recorded on GitHub |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
