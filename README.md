@@ -34,7 +34,7 @@ To clear application data, stop the application and run `yarn db:wipe`. It reads
 - Upload PDF, DOCX or legacy DOC up to 20,000,000 bytes. Originals are processed in memory and discarded after extraction. Image-only documents need a readable replacement; OCR is not implemented.
 - Enter contact details separately, then edit the redacted source on its own review page before any model call. Use PII_NAME, PII_EMAIL, PII_PHONE and PII_LOCATION for missed details; common equivalent markers normalize locally. Approval starts parsing.
 - Schema modification has one worker–judge pass; value mapping has at most five attempts. Schema work stays in the background. Every parsed resume awaits your approval or rejection; accepted resumes keep their extraction version.
-- Edit nested fields, additional sections and separate contact details. Tailoring preserves the source and creates a version for explicit review.
+- Review a readable resume and use each field’s pencil to edit it in place. The check accepts a change; the cross or Escape cancels it. Empty sections can be added on demand, and contact details stay separate. Tailoring preserves the source and creates a version for explicit review.
 - Generate PDF/DOCX on demand. Contact details are restored only on the server; files are not retained.
 - Temporary parsing data is deleted on acceptance and expires after 30 days when unfinished. Contact details for abandoned uploads expire as well; accepted records and their contact details remain.
 

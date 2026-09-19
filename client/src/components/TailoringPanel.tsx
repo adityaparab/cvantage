@@ -53,6 +53,7 @@ export default function TailoringPanel({
   const [data, setData] = useState<unknown>({});
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   useEffect(() => {
     api<Variant[]>(`/resumes/${resume._id}/variants`)
@@ -67,6 +68,7 @@ export default function TailoringPanel({
       .catch(() => setError('Could not load tailored versions.'));
   }, [resume._id, resume.revision, selectedId]);
   async function create() {
+    if (busy || unsaved || editing) return;
     setBusy(true);
     setError('');
     try {
@@ -89,7 +91,7 @@ export default function TailoringPanel({
     }
   }
   async function save(approve: boolean) {
-    if (!variant) return;
+    if (!variant || editing || busy) return;
     setBusy(true);
     setError('');
     try {
@@ -139,7 +141,7 @@ export default function TailoringPanel({
           information, and locations from this description.
         </label>
         {unsaved && <p>Save your resume changes before tailoring.</p>}
-        <button disabled={busy || unsaved}>
+        <button disabled={busy || unsaved || editing}>
           {busy ? 'Preparing your version…' : 'Create tailored version'}
         </button>
       </form>
@@ -151,6 +153,7 @@ export default function TailoringPanel({
               key={item._id}
               type="button"
               className="text-button"
+              disabled={busy || editing}
               onClick={() => {
                 setVariant(item);
                 setData(item.data);
@@ -205,10 +208,13 @@ export default function TailoringPanel({
             }}
           >
             <ResumeFields
+              key={variant._id}
               schema={schema}
               value={data}
               onChange={setData}
               label="Tailored resume"
+              onEditingChange={setEditing}
+              disabled={busy}
             />
             <label className="confirmation">
               <input type="checkbox" required />I checked these changes against
@@ -217,12 +223,12 @@ export default function TailoringPanel({
             <button
               type="button"
               className="secondary"
-              disabled={busy}
+              disabled={busy || editing}
               onClick={() => void save(false)}
             >
               Save draft
             </button>
-            <button disabled={busy}>Approve tailored version</button>
+            <button disabled={busy || editing}>Approve tailored version</button>
           </form>
           {variant.status === 'reviewed' && (
             <>
@@ -230,7 +236,10 @@ export default function TailoringPanel({
               <ExportControls
                 resumeId={resume._id}
                 variantId={variant._id}
-                disabled={JSON.stringify(data) !== JSON.stringify(variant.data)}
+                disabled={
+                  editing ||
+                  JSON.stringify(data) !== JSON.stringify(variant.data)
+                }
               />
             </>
           )}

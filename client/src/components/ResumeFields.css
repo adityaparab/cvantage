@@ -1,0 +1,222 @@
+.resume-document {
+  margin: 24px 0;
+  padding: 26px 30px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  line-height: 1.6;
+}
+.resume-edit-hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 24px;
+}
+.resume-object-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+}
+.resume-section,
+.resume-field-wide,
+.resume-missing {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.resume-section > h4 {
+  color: var(--accent);
+  margin: 20px 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 17px;
+}
+.resume-section .resume-section > h4 {
+  font-size: 14px;
+  border: 0;
+  padding: 0;
+  margin: 8px 0;
+}
+.resume-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  border-radius: 6px;
+  padding: 4px;
+}
+.resume-field:hover,
+.resume-field:focus-within {
+  background: var(--surface-muted);
+}
+.resume-field-content {
+  flex: 1;
+  min-width: 0;
+}
+.resume-field-label,
+.resume-field-content label {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  margin: 0 0 3px;
+}
+.resume-field p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.resume-field-content textarea,
+.resume-field-content input {
+  margin: 4px 0 0;
+  font-weight: 400;
+}
+.resume-field-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  padding-top: 14px;
+}
+.resume-document .resume-field-actions button.resume-icon {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+.resume-document .resume-field-actions button.resume-icon[hidden] {
+  display: none;
+}
+.resume-document .resume-field-actions button.resume-accept {
+  background: var(--accent);
+  color: var(--button-text);
+}
+.resume-document .resume-field-actions button.resume-icon:hover {
+  border-color: var(--accent);
+}
+.resume-pencil {
+  opacity: 0;
+}
+.resume-field:hover .resume-pencil,
+.resume-field:focus-within .resume-pencil {
+  opacity: 1;
+}
+.resume-items {
+  margin: 0;
+  padding-left: 18px;
+}
+.resume-items > li {
+  position: relative;
+  margin: 4px 0;
+  padding-right: 34px;
+}
+.resume-items:not(.resume-entries) .resume-field-actions {
+  padding-top: 0;
+}
+.resume-items:not(.resume-entries) > li > .resume-field .resume-field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.resume-entries {
+  padding: 0;
+  list-style: none;
+}
+.resume-entries > li + li {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.resume-entries > li {
+  padding-right: 0;
+  padding-bottom: 32px;
+  margin-bottom: 12px;
+}
+.resume-document .resume-section button.resume-add,
+.resume-document .resume-section button.resume-remove {
+  width: auto;
+  margin: 4px 0;
+  padding: 4px 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.resume-document .resume-section button.resume-add {
+  color: var(--accent);
+}
+.resume-document .resume-section button.resume-remove {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 32px;
+  padding: 4px;
+  margin: 0;
+}
+.resume-document .resume-entries > li > button.resume-remove {
+  top: auto;
+  bottom: 0;
+}
+.resume-remove {
+  opacity: 0;
+}
+.resume-items > li:hover > .resume-remove,
+.resume-items > li:focus-within > .resume-remove {
+  opacity: 1;
+}
+.resume-missing {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0;
+}
+.resume-missing > summary {
+  cursor: pointer;
+  padding: 6px 0;
+}
+.resume-missing[open] {
+  border-left: 2px solid var(--border);
+  padding-left: 12px;
+}
+@media (hover: none), (pointer: coarse) {
+  .resume-pencil,
+  .resume-remove {
+    opacity: 1;
+  }
+  .resume-document .resume-field-actions button.resume-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .resume-items > li {
+    padding-right: 48px;
+  }
+  .resume-entries > li {
+    padding-right: 0;
+    padding-bottom: 44px;
+  }
+  .resume-document .resume-section button.resume-remove {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (max-width: 600px) {
+  .resume-document {
+    padding: 18px 12px;
+  }
+  .resume-object-content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .resume-field-actions {
+    flex-direction: column;
+  }
+}

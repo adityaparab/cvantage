@@ -395,9 +395,140 @@ async function main() {
       path: join(output, 'activity-review.png'),
       fullPage: true,
     });
-    await page
+    const resumeReview = page.getByRole('article', {
+      name: 'Resume',
+      exact: true,
+    });
+    assert.equal(await resumeReview.getByRole('textbox').count(), 0);
+    const editSummary = resumeReview.getByRole('button', {
+      name: 'Edit Professional Summary',
+      exact: true,
+    });
+    await page.mouse.move(0, 0);
+    assert.equal(
+      await editSummary.evaluate((button) => getComputedStyle(button).opacity),
+      '0',
+    );
+    await resumeReview
+      .getByText(source.basics.summary, { exact: true })
+      .hover();
+    assert.equal(
+      await editSummary.evaluate((button) => getComputedStyle(button).opacity),
+      '1',
+    );
+    await resumeReview.screenshot({
+      path: join(output, 'resume-review-light.png'),
+    });
+    await editSummary.focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await resumeReview.getByRole('textbox').count(), 1);
+    assert.equal(await editSummary.count(), 0, 'Pencil hidden while editing');
+    assert(
+      await page
+        .getByRole('button', { name: 'Approve parsed resume' })
+        .isDisabled(),
+    );
+    await resumeReview
+      .getByLabel('Professional Summary', { exact: true })
+      .fill('Discard this draft.');
+    await page.keyboard.press('Escape');
+    assert(
+      await editSummary.evaluate((button) => button === document.activeElement),
+    );
+    assert(
+      await resumeReview
+        .getByText(source.basics.summary, { exact: true })
+        .isVisible(),
+    );
+    await editSummary.click();
+    await resumeReview
       .getByLabel('Professional Summary', { exact: true })
       .fill('Reviewed software engineer.');
+    await resumeReview.screenshot({
+      path: join(output, 'resume-inline-edit.png'),
+    });
+    await resumeReview
+      .getByRole('button', { name: 'Accept Professional Summary change' })
+      .click();
+    assert.equal(await resumeReview.getByRole('textbox').count(), 0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === 'dark',
+    );
+    await resumeReview.screenshot({
+      path: join(output, 'resume-review-mobile-dark.png'),
+    });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    );
+    await editSummary.click();
+    await resumeReview
+      .getByLabel('Professional Summary', { exact: true })
+      .fill('Cancelled mobile edit.');
+    await resumeReview.screenshot({
+      path: join(output, 'resume-inline-mobile-dark.png'),
+    });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    );
+    await resumeReview
+      .getByRole('button', { name: 'Cancel Professional Summary change' })
+      .click();
+    assert(
+      await resumeReview
+        .getByText('Reviewed software engineer.', { exact: true })
+        .isVisible(),
+    );
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.emulateMedia({ colorScheme: 'light' });
+    const touchContext = await browser.newContext({
+      storageState: await context.storageState(),
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+      colorScheme: 'dark',
+    });
+    try {
+      const touchPage = await touchContext.newPage();
+      await touchPage.goto(parsingUrl);
+      const touchPencil = touchPage.getByRole('button', {
+        name: 'Edit Professional Summary',
+        exact: true,
+      });
+      await touchPencil.waitFor();
+      assert.equal(
+        await touchPencil.evaluate(
+          (button) => getComputedStyle(button).opacity,
+        ),
+        '1',
+      );
+      assert.equal((await touchPencil.boundingBox()).width, 44);
+      await touchPencil.tap();
+      await touchPage
+        .getByLabel('Professional Summary', { exact: true })
+        .fill('Touch draft.');
+      await touchPage
+        .getByRole('button', { name: 'Cancel Professional Summary change' })
+        .tap();
+      assert(
+        await touchPage
+          .getByRole('article', { name: 'Resume', exact: true })
+          .getByText(source.basics.summary, { exact: true })
+          .isVisible(),
+      );
+      assert(
+        await touchPage.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      );
+    } finally {
+      await touchContext.close();
+    }
     await page
       .getByLabel(
         'I reviewed these fields for accuracy and removed identifying details.',
@@ -414,8 +545,29 @@ async function main() {
       }),
     });
     await editor
+      .getByRole('button', { name: 'Edit Professional Summary', exact: true })
+      .click();
+    assert(
+      await editor
+        .getByRole('button', { name: 'Save resume changes', exact: true })
+        .isDisabled(),
+    );
+    assert(
+      await page
+        .getByRole('button', { name: 'Create tailored version' })
+        .isDisabled(),
+    );
+    assert(
+      await page
+        .getByRole('button', { name: 'Download PDF', exact: true })
+        .isDisabled(),
+    );
+    await editor
       .getByLabel('Professional Summary', { exact: true })
       .fill('User corrected experience with internal tools.');
+    await editor
+      .getByRole('button', { name: 'Accept Professional Summary change' })
+      .click();
     await page
       .getByRole('button', { name: 'Save resume changes', exact: true })
       .click();
@@ -436,6 +588,30 @@ async function main() {
     await page
       .getByRole('heading', { name: 'Review your tailored version' })
       .waitFor();
+    const tailoredReview = page.getByRole('article', {
+      name: 'Tailored resume',
+      exact: true,
+    });
+    assert.equal(await tailoredReview.getByRole('textbox').count(), 0);
+    await tailoredReview
+      .getByRole('button', { name: 'Edit Professional Summary', exact: true })
+      .click();
+    assert(
+      await page
+        .getByRole('button', { name: 'Save draft', exact: true })
+        .isDisabled(),
+    );
+    assert(
+      await page
+        .getByRole('button', { name: 'Approve tailored version', exact: true })
+        .isDisabled(),
+    );
+    await tailoredReview
+      .getByLabel('Professional Summary', { exact: true })
+      .fill('Discard tailored draft.');
+    await tailoredReview
+      .getByRole('button', { name: 'Cancel Professional Summary change' })
+      .click();
     await page
       .getByLabel(
         'I checked these changes against my experience and approve this version.',

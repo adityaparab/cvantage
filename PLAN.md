@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** editable redaction review is merged in [PR #17](https://github.com/adityaparab/cvantage/pull/17). Milestone 17 is implemented and verified: an explicit database wipe command.
-**Next action:** live provider evaluation and Railway remain separate. [PR #18](https://github.com/adityaparab/cvantage/pull/18) records the database wipe command and its merge status.
+**Current state:** milestones 0–17 are implemented and merged. Milestone 18 is implemented and verified on `feat/inline-resume-review`.
+**Next action:** live provider evaluation and Railway remain separate. [PR #19](https://github.com/adityaparab/cvantage/pull/19) records the inline review change and its merge status.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -31,6 +31,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 15. Local startup setup command | Complete | 9 | Real isolated Compose absent/stopped/running checks; data preserved; setup failure blocks startup; full yarn start reaches HTTP 200 |
 | 16. Editable redaction review before parsing | Complete | 3, 12 | Full build/both linters; 45 unit, 41 integration, 15 client tests; browser review → activity → export and desktop/mobile inspection |
 | 17. Explicit database wipe command | Complete | 15 | 49 integration tests including 8 wipe regressions; actual interactive yarn command cancellation/confirmation; user database untouched |
+
+| 18. Resume review with inline editing | Complete | 5, 10, 13 | Full build/client lint; 21 client tests; Chromium inline review/source/tailored edits, touch/keyboard and exports; light/dark mobile inspection |
 
 ### How to maintain progress
 
@@ -305,6 +307,14 @@ Completion: user edits and approves redaction separately before any model call. 
 
 Completion: the command drops only the explicitly configured database, protects system databases, hides credentials and requires confirmation. The next application startup restores indexes and the supplied schema. The user database was never wiped; isolated test services were removed.
 
+### 18. Resume review with inline editing
+
+- [x] Show populated resume content in a readable document layout; keep optional empty details available on demand.
+- [x] Add a right-aligned pencil on hover/focus (always available on touch); edit one field at a time with check/cross controls, draft isolation and Escape cancellation.
+- [x] Apply the shared editor to parsed reviews, saved resumes and tailored versions; prevent saving, approving or exporting an unfinished field edit.
+- [x] Verify nested/array fields, optional values, keyboard navigation, mobile/theme layouts and the browser review → edit → tailor → export journey.
+- [x] Update product/verification documentation, push `feat/inline-resume-review` and create [PR #19](https://github.com/adityaparab/cvantage/pull/19); its linked status records the merge.
+
 ## Verification commands
 
 Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
@@ -363,5 +373,7 @@ yarn test:models
 | Local startup setup | `deploy/local/setup.cjs`, `setup`/`prestart` scripts and local/production startup documentation | Isolated Compose absent/stopped/running paths, stable container/data, failed-Docker startup abort, actual setup → client build → API HTTP 200; test resources cleaned up | [PR #16](https://github.com/adityaparab/cvantage/pull/16), `feat/local-startup-setup`, records the implementation and merge status; existing local database left running without restart |
 | Editable redaction review | Typed PII markers, local alias normalization, dedicated editable upload review with selection tools, approval-gated activity and notification routing | Full build/both linters; 45 unit, 41 integration, 15 client tests; Chromium flow and desktop/mobile inspection | [PR #17](https://github.com/adityaparab/cvantage/pull/17), `feat/editable-redaction-review`; next: explicit database wipe command |
 | Database wipe command | `scripts/wipe-database.cjs`, `yarn db:wipe`, exact-name confirmation and reset/reseeding documentation | 49 real database integration tests including 8 wipe cases; actual terminal cancellation/confirmation; sibling database preserved; fresh startup reseeds exact baseline | [PR #18](https://github.com/adityaparab/cvantage/pull/18), `feat/database-wipe`; live provider evaluation and Railway remain separate |
+
+| Inline resume review | Shared readable document layout, per-field drafts/check/cross, collapsed empty details, keyboard/touch controls and unfinished-edit guards | Full build/client lint; 21 client tests; complete synthetic Chromium workflow and desktop/mobile visual inspection | [PR #19](https://github.com/adityaparab/cvantage/pull/19), `feat/inline-resume-review`; merge status recorded on GitHub |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

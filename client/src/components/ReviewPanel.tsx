@@ -32,6 +32,7 @@ export default function ReviewPanel({
   const [candidate, setCandidate] = useState<unknown>({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -64,7 +65,7 @@ export default function ReviewPanel({
     };
   }, [id, onComplete, onClose]);
   async function approve() {
-    if (!review) return;
+    if (!review || editing || busy) return;
     setBusy(true);
     setError('');
     try {
@@ -129,8 +130,8 @@ export default function ReviewPanel({
           {needsReview && (
             <>
               <p className="muted">
-                Check the fields below before approving. Approval does not
-                restart exhausted AI attempts.
+                Read your resume below and use a pencil to correct any detail.
+                Approval does not restart exhausted AI attempts.
               </p>
               {review.job.judge && (
                 <p>
@@ -159,12 +160,14 @@ export default function ReviewPanel({
                   schema={review.schema!}
                   value={candidate}
                   onChange={setCandidate}
+                  onEditingChange={setEditing}
+                  disabled={busy}
                 />
                 <label className="confirmation">
                   <input type="checkbox" required />I reviewed these fields for
                   accuracy and removed identifying details.
                 </label>
-                <button disabled={busy}>
+                <button disabled={busy || editing}>
                   {busy ? 'Saving…' : 'Approve parsed resume'}
                 </button>
               </form>
