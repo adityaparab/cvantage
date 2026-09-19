@@ -8,7 +8,7 @@ The implemented workflow was verified locally with synthetic data. These checks 
 | Server ESLint and client Oxlint | Pass |
 | Backend unit tests | 45 pass |
 | MongoDB/HTTP/graph integration tests | 49 pass against an isolated local replica set |
-| React behavior tests | 25 pass |
+| React behavior tests | 32 pass |
 | Real Chromium UI journey | Pass: register, upload DOCX, redact, five-attempt mapping review, approve, edit, tailor, approve variant, download PDF/DOCX, preview PDF, restore session, logout |
 | Browser workflow privacy | 15 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
 | Navigation/accessibility | Upload opens editable redaction review; approval redirects to activity; notification links, Escape/focus, reload recovery, theme persistence/system changes, keyboard field navigation and 390 px mobile layout checked |
@@ -60,3 +60,7 @@ Full build, client lint and all 21 client tests pass. Field regressions cover re
 ## Resume field/group deletion — 2026-09-19
 
 Full build/client lint and 25 client tests pass. New tests cover scalar/object/array-group removal, undo, schema preservation, required-field protection and prevention of undo overwriting subsequent edits. The Chromium workflow confirms deletion of an individual date and a skills group survives approval, saved editing and tailoring inputs, and both exports still succeed. Desktop/mobile screenshots were inspected in `/tmp/cvantage-delete-browser`. This frontend change used only synthetic data and a local scripted model proxy; backend unit/integration suites were not rerun.
+
+## Redaction review readiness — 2026-09-19
+
+Full build/client lint and 32 client tests pass. Regression coverage includes immediate upload content, route remount handoff and clearing on exit, empty/missing text progressing to ready, request failure/retry, a 30-second timeout, aborted/unmounted requests, ignored late responses and preservation of manual edits. The Chromium journey now checks the first post-upload visit before any reload and confirms no redundant job read. A controlled delayed response exercises the progress indicator and automatic text refresh on the same page; all parsing, deletion, tailoring and export checks still pass. The loading screenshot was inspected in `/tmp/cvantage-redaction-loading-browser`. Tests use synthetic data, an isolated MongoDB replica set and a local scripted model endpoint; backend unit/integration suites were not rerun for these client changes. Temporary test services were removed.

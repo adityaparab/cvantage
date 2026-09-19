@@ -57,6 +57,6 @@ Browser tests use synthetic data, a random disposable database and a local deter
 
 [PROJECT.md](PROJECT.md) defines product behavior. [PLAN.md](PLAN.md) tracks implementation, PRs, verification and pending live evaluation. [AGENT.md](AGENT.md) contains agent guidance and installed skill routing.
 
-Successful uploads open an editable redaction review. Approving it opens the live workflow activity page. Follow preparation, extraction, review, loop attempts and retries there; the navigation bell reopens active work. Schema processing stays internal, and you approve or reject only parsed resume content. Appearance supports Light, Dark and System (the default).
+Successful uploads immediately open their redacted text for review. Loading shows a progress indicator and automatically displays text when ready; failed loads can be retried on the same page. Approving it opens the live workflow activity page. Follow preparation, extraction, review, loop attempts and retries there; the navigation bell reopens active work. Schema processing stays internal, and you approve or reject only parsed resume content. Appearance supports Light, Dark and System (the default).
 
 The authoritative resume schema is [`schema/schema.json`](schema/schema.json). It is seeded into MongoDB on startup. The worker can propose only source-supported missing fields; existing definitions are preserved and resumes with no new fields reuse the current version. Ship the `schema/` directory with the built server.

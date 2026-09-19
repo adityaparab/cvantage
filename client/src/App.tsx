@@ -9,6 +9,7 @@ import { api, ApiError, setCsrfToken } from './lib/api';
 import './App.css';
 import ThemeSelect from './components/ThemeSelect';
 import PrivacyReview from './components/PrivacyReview';
+import { usePreparedUpload } from './lib/uploadReviewContext';
 interface User {
   id: string;
   email: string;
@@ -34,6 +35,7 @@ export default function App() {
       .catch(() => setError('Could not refresh resumes.'));
   }, []);
   const [resumes, setResumes] = useState<Resume[]>([]);
+  const { preparedUpload, setPreparedUpload } = usePreparedUpload();
   useEffect(() => {
     let active = true;
     api<User>('/auth/me')
@@ -129,7 +131,11 @@ export default function App() {
           <p role="status">Loading your workspace…</p>
         ) : user ? (
           uploadId ? (
-            <PrivacyReview key={uploadId} id={uploadId} />
+            <PrivacyReview
+              key={uploadId}
+              id={uploadId}
+              initial={preparedUpload}
+            />
           ) : workflowId ? (
             <WorkflowActivity
               key={workflowId}
@@ -152,7 +158,10 @@ export default function App() {
                 />
               ) : (
                 <UploadResume
-                  onUploaded={(id) => navigate(`/uploads/${id}/review`)}
+                  onUploaded={(id, prepared) => {
+                    setPreparedUpload(prepared);
+                    navigate(`/uploads/${id}/review`);
+                  }}
                 />
               )}
               <section className="panel">

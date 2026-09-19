@@ -1,48 +1,40 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
-interface PreparedJob {
-  source: string;
-  revision: number;
-  piiConfirmed?: boolean;
-}
+import { useRedactionReview } from '../lib/useRedactionReview';
+import type { PreparedUpload } from '../lib/useRedactionReview';
+import LoadingProgress from './LoadingProgress';
 const markers = [
   ['PII_NAME', 'name'],
   ['PII_EMAIL', 'email'],
   ['PII_PHONE', 'phone number'],
   ['PII_LOCATION', 'location or address'],
 ];
-export default function PrivacyReview({ id }: { id: string }) {
-  const [job, setJob] = useState<PreparedJob | null>(null);
-  const [source, setSource] = useState('');
+export default function PrivacyReview({
+  id,
+  initial,
+}: {
+  id: string;
+  initial?: PreparedUpload;
+}) {
+  const { job, error: loadError, retry } = useRedactionReview(id, initial);
+  const [source, setSource] = useState(job?.source ?? '');
   const [confirmed, setConfirmed] = useState(false);
   const [selection, setSelection] = useState([0, 0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const textarea = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
-  useEffect(() => {
-    let active = true;
-    api<PreparedJob>(`/parsing-jobs/${id}`)
-      .then((value) => {
-        if (!active) return;
-        if (value.piiConfirmed) {
-          navigate(`/activity/${id}`, { replace: true });
-          return;
-        }
-        setJob(value);
-        setSource(value.source);
-      })
-      .catch(() => {
-        if (active)
-          setError(
-            'Could not load this upload. It may have expired or been deleted.',
-          );
-      });
-    return () => {
-      active = false;
-    };
-  }, [id, navigate]);
+  useLayoutEffect(() => {
+    if (!job) return;
+    if (job.piiConfirmed) {
+      navigate(`/activity/${id}`, { replace: true });
+      return;
+    }
+    setSource(job.source);
+    setConfirmed(false);
+    setSelection([0, 0]);
+  }, [job, id, navigate]);
   function edit(value: string) {
     setSource(value);
     setConfirmed(false);
@@ -99,7 +91,7 @@ export default function PrivacyReview({ id }: { id: string }) {
         Edit the text below before continuing. No resume text is sent to AI
         until you approve this review.
       </p>
-      <section className="panel">
+      <section className="panel" aria-busy={!job && !loadError}>
         <h2>Check for personal details</h2>
         <p>
           We replace your supplied name, location and contact details, plus
@@ -177,8 +169,17 @@ export default function PrivacyReview({ id }: { id: string }) {
               Cancel and delete this upload
             </button>
           </form>
+        ) : loadError ? (
+          <div>
+            <p role="alert" className="error">
+              {loadError}
+            </p>
+            <button type="button" className="secondary" onClick={retry}>
+              Retry loading text
+            </button>
+          </div>
         ) : (
-          !error && <p role="status">Loading text…</p>
+          <LoadingProgress message="Preparing your redacted text… It will appear here automatically." />
         )}
         {error && (
           <p role="alert" className="error">

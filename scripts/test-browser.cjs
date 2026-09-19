@@ -232,12 +232,58 @@ async function main() {
       .setInputFiles(
         join(__dirname, '../test/fixtures/cvantage-synthetic-resume.docx'),
       );
+    let jobReads = 0;
+    let releaseText;
+    const textReady = new Promise((resolve) => {
+      releaseText = resolve;
+    });
+    await page.route('**/api/parsing-jobs/*', async (route) => {
+      const response = await route.fetch();
+      jobReads++;
+      if (jobReads === 1) {
+        await route.fulfill({
+          response,
+          json: { ...(await response.json()), source: '' },
+        });
+      } else {
+        await textReady;
+        await route.fulfill({ response });
+      }
+    });
     await page
       .getByRole('button', { name: 'Upload resume', exact: true })
       .click();
     await page.waitForURL('**/uploads/*/review');
     const reviewUrl = page.url();
+    const firstText = await page
+      .getByLabel('Redacted resume text')
+      .inputValue();
+    assert(
+      firstText.includes('PII_NAME'),
+      'First navigation displays the upload result without reload',
+    );
+    assert.equal(
+      jobReads,
+      0,
+      'Fresh uploads reuse available text instead of fetching it again',
+    );
     await page.reload();
+    await page
+      .getByRole('progressbar', { name: /Preparing your redacted text/ })
+      .waitFor();
+    assert.equal(
+      await page.getByLabel('Redacted resume text').count(),
+      0,
+      'Never show an empty review form',
+    );
+    await page.screenshot({
+      path: join(output, 'redaction-loading.png'),
+      fullPage: true,
+    });
+    releaseText();
+    await page.getByLabel('Redacted resume text').waitFor();
+    assert(jobReads >= 2, 'Unready text refreshes automatically');
+    await page.unroute('**/api/parsing-jobs/*');
     await page
       .getByRole('heading', { name: 'Review your redacted resume' })
       .waitFor();

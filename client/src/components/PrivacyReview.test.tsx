@@ -1,13 +1,23 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  Link,
+  MemoryRouter,
+  Route,
+  Routes,
+  useNavigate,
+} from 'react-router-dom';
 import PrivacyReview from './PrivacyReview';
+import type { PreparedUpload } from '../lib/useRedactionReview';
+import UploadReviewProvider from './UploadReviewProvider';
+import { usePreparedUpload } from '../lib/uploadReviewContext';
 import WorkflowActivity from './WorkflowActivity';
 import { api } from '../lib/api';
 vi.mock('../lib/api', async (original) => ({
@@ -16,15 +26,16 @@ vi.mock('../lib/api', async (original) => ({
 }));
 afterEach(() => {
   cleanup();
-  vi.clearAllMocks();
+  vi.mocked(api).mockReset();
+  vi.useRealTimers();
 });
-function renderReview() {
+function renderReview(initial?: PreparedUpload) {
   render(
     <MemoryRouter initialEntries={['/uploads/job/review']}>
       <Routes>
         <Route
           path="/uploads/job/review"
-          element={<PrivacyReview id="job" />}
+          element={<PrivacyReview id="job" initial={initial} />}
         />
         <Route path="/activity/job" element={<h1>Parsing activity</h1>} />
       </Routes>
@@ -124,4 +135,178 @@ it('redirects an unapproved activity link to upload review before showing parsin
     expect(screen.getByText('Upload privacy review')).toBeTruthy(),
   );
   expect(screen.queryByText('Extract resume content')).toBeNull();
+});
+
+it('displays the upload response immediately without a redundant request', () => {
+  renderReview({
+    jobId: 'job',
+    source: 'PII_NAME immediate engineer',
+    revision: 0,
+  });
+  expect(
+    screen.getByLabelText<HTMLTextAreaElement>('Redacted resume text').value,
+  ).toBe('PII_NAME immediate engineer');
+  expect(api).not.toHaveBeenCalled();
+  expect(screen.queryByRole('progressbar')).toBeNull();
+});
+
+it('shows progress for unavailable text and replaces it automatically without overwriting later edits', async () => {
+  vi.useFakeTimers();
+  vi.mocked(api)
+    .mockResolvedValueOnce({ source: '', revision: 0 })
+    .mockResolvedValueOnce({ source: 'PII_NAME ready engineer', revision: 1 });
+  renderReview();
+  expect(screen.getByRole('progressbar')).toBeTruthy();
+  expect(screen.queryByLabelText('Redacted resume text')).toBeNull();
+  expect(
+    screen.queryByRole('button', {
+      name: 'Approve redaction and start parsing',
+    }),
+  ).toBeNull();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  const field = screen.getByLabelText<HTMLTextAreaElement>(
+    'Redacted resume text',
+  );
+  expect(field.value).toBe('PII_NAME ready engineer');
+  fireEvent.change(field, { target: { value: 'PII_NAME user correction' } });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(30_000);
+  });
+  expect(field.value).toBe('PII_NAME user correction');
+  expect(api).toHaveBeenCalledTimes(2);
+});
+
+it('recovers failed loads from the review page using Retry', async () => {
+  vi.mocked(api)
+    .mockRejectedValueOnce(new Error('Network unavailable'))
+    .mockResolvedValueOnce({
+      source: 'PII_NAME recovered engineer',
+      revision: 3,
+    });
+  renderReview();
+  await screen.findByRole('alert');
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading text' }));
+  const field = await screen.findByLabelText<HTMLTextAreaElement>(
+    'Redacted resume text',
+  );
+  expect(field.value).toBe('PII_NAME recovered engineer');
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('bounds stalled requests, aborts them, and ignores late responses after retry', async () => {
+  vi.useFakeTimers();
+  let resolveOld!: (value: unknown) => void;
+  vi.mocked(api)
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOld = resolve;
+        }),
+    )
+    .mockResolvedValueOnce({ source: 'PII_NAME fresh engineer', revision: 2 });
+  renderReview();
+  const signal = vi.mocked(api).mock.calls[0][1]?.signal;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(30_000);
+  });
+  expect(screen.getByRole('alert').textContent).toContain('taking longer');
+  expect(signal?.aborted).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading text' }));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  const field = screen.getByLabelText<HTMLTextAreaElement>(
+    'Redacted resume text',
+  );
+  fireEvent.change(field, { target: { value: 'PII_NAME manual correction' } });
+  await act(async () => {
+    resolveOld({ source: 'Old response', revision: 0 });
+  });
+  expect(field.value).toBe('PII_NAME manual correction');
+});
+
+it('aborts requests and cancels refreshes when leaving the screen', async () => {
+  vi.useFakeTimers();
+  vi.mocked(api).mockResolvedValue({ revision: 0 });
+  renderReview();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  const signal = vi.mocked(api).mock.calls[0][1]?.signal;
+  cleanup();
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(signal?.aborted).toBe(true);
+  expect(api).toHaveBeenCalledTimes(1);
+});
+
+it('does not display preloaded text belonging to another upload', async () => {
+  vi.mocked(api).mockResolvedValueOnce({
+    source: 'PII_NAME correct upload',
+    revision: 0,
+  });
+  renderReview({ jobId: 'other-job', source: 'Wrong upload', revision: 0 });
+  const field = await screen.findByLabelText<HTMLTextAreaElement>(
+    'Redacted resume text',
+  );
+  expect(field.value).toBe('PII_NAME correct upload');
+});
+
+it('hands off text across route remounts and clears it when leaving review', async () => {
+  vi.mocked(api).mockResolvedValue({
+    source: 'PII_NAME stored source',
+    revision: 0,
+  });
+  function UploadStep() {
+    const navigate = useNavigate();
+    const { preparedUpload, setPreparedUpload } = usePreparedUpload();
+    return (
+      <>
+        <p>{preparedUpload?.source ?? 'No cached text'}</p>
+        <button
+          onClick={() => {
+            setPreparedUpload({
+              jobId: 'job',
+              source: 'PII_NAME fresh source',
+              revision: 0,
+            });
+            navigate('/uploads/job/review');
+          }}
+        >
+          Finish upload
+        </button>
+        <Link to="/uploads/job/review">Reopen upload</Link>
+      </>
+    );
+  }
+  function ReviewStep() {
+    const { preparedUpload } = usePreparedUpload();
+    return <PrivacyReview id="job" initial={preparedUpload} />;
+  }
+  render(
+    <MemoryRouter>
+      <UploadReviewProvider>
+        <Routes>
+          <Route path="/" element={<UploadStep />} />
+          <Route path="/uploads/job/review" element={<ReviewStep />} />
+        </Routes>
+      </UploadReviewProvider>
+    </MemoryRouter>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Finish upload' }));
+  expect(
+    screen.getByLabelText<HTMLTextAreaElement>('Redacted resume text').value,
+  ).toBe('PII_NAME fresh source');
+  expect(api).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('link', { name: '← Back to workspace' }));
+  await screen.findByText('No cached text');
+  fireEvent.click(screen.getByRole('link', { name: 'Reopen upload' }));
+  const field = await screen.findByLabelText<HTMLTextAreaElement>(
+    'Redacted resume text',
+  );
+  expect(field.value).toBe('PII_NAME stored source');
+  expect(api).toHaveBeenCalledTimes(1);
 });

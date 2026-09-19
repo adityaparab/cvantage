@@ -502,3 +502,17 @@ input[type='checkbox'] {
   font-size: clamp(28px, 4vw, 42px);
   margin: 20px 0 12px;
 }
+
+.loading-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 24px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.loading-progress progress {
+  width: min(100%, 280px);
+  height: 8px;
+  accent-color: var(--accent);
+}
