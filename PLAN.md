@@ -9,7 +9,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 ## Status and next action
 
 **Current state:** editable redaction review is merged in [PR #17](https://github.com/adityaparab/cvantage/pull/17). Milestone 17 is implemented and verified: an explicit database wipe command.
-**Next action:** merge `feat/database-wipe`. Live provider evaluation and Railway remain separate.
+**Next action:** live provider evaluation and Railway remain separate. [PR #18](https://github.com/adityaparab/cvantage/pull/18) records the database wipe command and its merge status.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -362,6 +362,6 @@ yarn test:models
 | Single-pass schema modification | Stage-specific limits, terminal schema rejection/conflicts, restart protection and corrected activity labels | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and full resume journey | [PR #15](https://github.com/adityaparab/cvantage/pull/15), `feat/single-pass-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Local startup setup | `deploy/local/setup.cjs`, `setup`/`prestart` scripts and local/production startup documentation | Isolated Compose absent/stopped/running paths, stable container/data, failed-Docker startup abort, actual setup → client build → API HTTP 200; test resources cleaned up | [PR #16](https://github.com/adityaparab/cvantage/pull/16), `feat/local-startup-setup`, records the implementation and merge status; existing local database left running without restart |
 | Editable redaction review | Typed PII markers, local alias normalization, dedicated editable upload review with selection tools, approval-gated activity and notification routing | Full build/both linters; 45 unit, 41 integration, 15 client tests; Chromium flow and desktop/mobile inspection | [PR #17](https://github.com/adityaparab/cvantage/pull/17), `feat/editable-redaction-review`; next: explicit database wipe command |
-| Database wipe command | `scripts/wipe-database.cjs`, `yarn db:wipe`, exact-name confirmation and reset/reseeding documentation | 49 real database integration tests including 8 wipe cases; actual terminal cancellation/confirmation; sibling database preserved; fresh startup reseeds exact baseline | Merge `feat/database-wipe`; live provider evaluation and Railway remain separate |
+| Database wipe command | `scripts/wipe-database.cjs`, `yarn db:wipe`, exact-name confirmation and reset/reseeding documentation | 49 real database integration tests including 8 wipe cases; actual terminal cancellation/confirmation; sibling database preserved; fresh startup reseeds exact baseline | [PR #18](https://github.com/adityaparab/cvantage/pull/18), `feat/database-wipe`; live provider evaluation and Railway remain separate |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
