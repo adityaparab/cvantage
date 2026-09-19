@@ -18,3 +18,18 @@ it('redacts repeated contact values, names and locations without removing profes
     containsPii({ basics: { headline: 'Synthetic Applicant' } }, pii),
   ).toBe(true);
 });
+it('uses typed markers and leaves them unchanged on repeated redaction', () => {
+  const result = redactPii(
+    `${pii.name}\n${pii.email}\n${pii.contactNumber}\n${pii.location}`,
+    pii,
+  );
+  expect(result).toBe('PII_NAME\nPII_EMAIL\nPII_PHONE\nPII_LOCATION');
+  expect(redactPii(result, pii)).toBe(result);
+  expect(containsPii(result, pii)).toBe(false);
+});
+it('does not redact generated markers when a contact value overlaps a marker name', () => {
+  const overlapping = { ...pii, name: 'Name', location: 'Email' };
+  const result = redactPii('Name Email PII_NAME PII_EMAIL', overlapping);
+  expect(result).toBe('PII_NAME PII_LOCATION PII_NAME PII_EMAIL');
+  expect(redactPii(result, overlapping)).toBe(result);
+});

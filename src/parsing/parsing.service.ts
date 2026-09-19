@@ -1,4 +1,5 @@
 import { applySchemaAdditions } from '../contracts/schema-additions';
+import { normalizeRedactionMarkers } from '../documents/redaction-markers';
 import { trackedGenerate } from '../activity/model-progress';
 import type { StepRun } from '../activity/activity.types';
 import {
@@ -157,6 +158,7 @@ export class ParsingService implements OnModuleInit, OnModuleDestroy {
     const feedback = job.judge ?? job.failureCode ?? null;
     await this.patch(job, {
       activity,
+      source: normalizeRedactionMarkers(job.source),
       [counter]: job[counter] + 1,
       status: job.stage,
       failureCode: undefined,

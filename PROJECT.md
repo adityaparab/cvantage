@@ -54,6 +54,7 @@ Delete redacted source text, workflow checkpoints, and review drafts when parsin
 - The user's name, contact number, email, and location are PII. Extract and store these in a separate, access-controlled MongoDB record linked to the user's resume; do not embed them in parsed resume data.
 - Redact these values wherever they occur before any resume content is sent to an LLM, including during tailoring. Keep them out of logs, judge feedback, and schema examples.
 - `basics` contains non-PII professional information present in the source, such as a professional headline or target role. It may be empty when the resume provides none. Do not infer missing values.
+- Use `PII_NAME`, `PII_EMAIL`, `PII_PHONE`, and `PII_LOCATION` as canonical redaction markers. Detect supplied contact values and common email/phone patterns locally; clearly explain that other identifying details may need manual removal. Normalize equivalent explicit markers (such as `[EMAIL REMOVED]` or `PHONE_REDACTED`) locally before any LLM call. Preserve unknown/ambiguous markers rather than guessing. Never send unapproved source text to an LLM for normalization.
 - Allow the user to review and correct PII separately. At export, combine the selected resume with its associated PII on the server without sending PII to an LLM.
 
 ## Resume parsing workflow
@@ -152,7 +153,7 @@ When implementing the relevant feature, verify these observable outcomes:
 ## Appearance and workflow activity
 
 - Offer Light, Dark, and System appearance; System is the default and follows live operating-system changes. Remember an explicit choice across reloads.
-- A successful upload navigates to a dedicated activity URL. Keep the pre-model privacy confirmation there, before sending redacted source to a model.
+- A successful upload opens a dedicated editable redaction review at `/uploads/:id/review`, with clear required-action messaging and tools to replace selected text with typed markers. Do not show parsing steps on this page. Only after explicit redaction approval may parsing begin and navigation move to `/activity/:id`. Reloads and notification links must reopen the appropriate review/activity page.
 - Display every workflow step with inactive, active, success, or failure indicators, iteration counts, revision loops, and transport retry status. Stream model output and status as work happens; output is provisional until validated.
 - Schema definitions and schema-related model output remain internal. Those steps stream progress metadata only. Visible resume/judge output must exclude PII, provider secrets, and hidden reasoning.
 - A notification button in the top navigation lists active workflows and work awaiting user action. Each aligned dropdown row links to its activity screen and updates as work progresses. Handle empty, loading, disconnected, and failure states; preserve keyboard and mobile usability.

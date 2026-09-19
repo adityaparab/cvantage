@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../lib/api';
-import { activityStatus, activityTitle } from '../lib/activity';
+import { activityHref, activityStatus, activityTitle } from '../lib/activity';
 import type { Activity } from '../lib/activity';
 export default function WorkflowNotifications() {
   const [items, setItems] = useState<Activity[]>([]);
@@ -114,7 +114,7 @@ export default function WorkflowNotifications() {
               <li key={item.id}>
                 <Link
                   className="notification-item"
-                  to={`/activity/${item.id}`}
+                  to={activityHref(item)}
                   onClick={() => setOpen(false)}
                 >
                   <span
@@ -151,5 +151,5 @@ function progress(item: Activity) {
     tailoring_worker: 'Tailoring wording',
     tailoring_judge: 'Reviewing wording',
   };
-  return `${labels[run.step] ?? 'Processing'} · attempt ${run.attempt}/${item.kind === 'parsing' ? 5 : 1} · retries ${run.retries}/2`;
+  return `${labels[run.step] ?? 'Processing'} · attempt ${run.attempt}/${run.step.startsWith('mapping') ? 5 : 1} · retries ${run.retries}/2`;
 }

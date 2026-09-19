@@ -11,7 +11,7 @@ it('withholds incomplete strings and redacts escaped and split identifying detai
   const raw =
     '{"summary":"Synthetic Applicant in Wars\\u0061w, Poland. private@example.test. +1 555 123 4567","skills":["TypeScript",';
   expect(safePreview(raw, pii)).toBe(
-    '[REDACTED] in [REDACTED]. [REDACTED]. [REDACTED]\nTypeScript',
+    'PII_NAME in PII_LOCATION. PII_EMAIL. PII_PHONE\nTypeScript',
   );
   expect(safePreview('{"summary":"I use \\"', pii)).toBe('');
 });
@@ -61,7 +61,7 @@ it('persists provisional safe output and resets it on transport retry', async ()
     snapshots.some((value) => value.retries === 1 && value.output === ''),
   ).toBe(true);
   expect(run).toMatchObject({
-    output: '[REDACTED] writes TypeScript',
+    output: 'PII_NAME writes TypeScript',
     status: 'success',
     retries: 1,
   });

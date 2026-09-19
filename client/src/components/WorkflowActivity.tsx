@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { activityStatus, activityTitle } from '../lib/activity';
 import type { Activity, StepRun } from '../lib/activity';
-import PrivacyReview from './PrivacyReview';
 import ReviewPanel from './ReviewPanel';
 const parsingSteps = [
-  ['privacy', 'Confirm private details are removed'],
   ['preparation_worker', 'Prepare document'],
   ['preparation_judge', 'Check document preparation'],
   ['mapping_worker', 'Extract resume content'],
@@ -21,7 +19,6 @@ const tailoringSteps = [
 type Indicator = 'inactive' | 'active' | 'success' | 'failure';
 function indicator(activity: Activity, key: string, run?: StepRun): Indicator {
   if (activity.status === 'completed') return 'success';
-  if (key === 'privacy') return activity.piiConfirmed ? 'success' : 'active';
   if (key === 'approval')
     return activity.status === 'review_required' ? 'active' : 'inactive';
   if (run) return run.status;
@@ -147,11 +144,6 @@ export default function WorkflowActivity({
     onComplete();
     navigate('/');
   }, [navigate, onComplete]);
-  const refresh = useCallback(() => {
-    void api<Activity>(`/workflows/${id}`)
-      .then(setActivity)
-      .catch(() => setError('Could not refresh this workflow.'));
-  }, [id]);
   useEffect(() => {
     let active = true;
     let stream: EventSource | undefined;
@@ -183,7 +175,11 @@ export default function WorkflowActivity({
       .then((value) => {
         if (!active) return;
         apply(value);
-        if (value.status === 'completed') return;
+        if (
+          value.status === 'completed' ||
+          (value.kind === 'parsing' && !value.piiConfirmed)
+        )
+          return;
         stream = new EventSource(`/api/workflows/${id}/events`);
         stream.onopen = () => {
           if (active) setConnection('Live updates connected');
@@ -233,6 +229,12 @@ export default function WorkflowActivity({
     activity?.kind === 'parsing' &&
     activity.piiConfirmed &&
     ['review_required', 'failed'].includes(activity.status);
+  if (
+    activity?.kind === 'parsing' &&
+    !activity.piiConfirmed &&
+    activity.status !== 'completed'
+  )
+    return <Navigate to={`/uploads/${id}/review`} replace />;
   return (
     <div className="workflow-page">
       <Link className="text-button" to="/">
@@ -267,11 +269,6 @@ export default function WorkflowActivity({
               below, or return to your workspace to try again.
             </p>
           )}
-          {activity.kind === 'parsing' &&
-            !activity.piiConfirmed &&
-            activity.status !== 'completed' && (
-              <PrivacyReview id={id} onPrepared={refresh} />
-            )}
           {review && (
             <section className="panel">
               <ReviewPanel id={id} onComplete={onComplete} onClose={close} />

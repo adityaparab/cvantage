@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestone 15 is implemented and verified: `yarn start` prepares local MongoDB with `yarn setup` before building the client and starting the server.
-**Next action:** live provider evaluation and Railway remain separate pending work. [PR #16](https://github.com/adityaparab/cvantage/pull/16) records milestone 15 and its merge status.
+**Current state:** milestone 16 is implemented and verified: editable redaction review before parsing, with typed markers normalized locally.
+**Next action:** merge `feat/editable-redaction-review`, then implement milestone 17 (`db:wipe`) on a separate branch. Live provider evaluation and Railway remain separate.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -29,6 +29,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 13. Seeded additive resume schema | Complete | 4, 10, 12 | Full build/both linters; 40 unit, 36 integration, 10 client tests; Chromium extraction/edit/tailor/export using the supplied layout |
 | 14. Single-pass schema modification | Complete | 13 | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and five mapping attempts |
 | 15. Local startup setup command | Complete | 9 | Real isolated Compose absent/stopped/running checks; data preserved; setup failure blocks startup; full yarn start reaches HTTP 200 |
+| 16. Editable redaction review before parsing | Complete | 3, 12 | Full build/both linters; 45 unit, 41 integration, 15 client tests; browser review → activity → export and desktop/mobile inspection |
+| 17. Explicit database wipe command | Pending | 15 | Add command; never wipe the user database during implementation |
 
 ### How to maintain progress
 
@@ -254,7 +256,7 @@ Completion: MongoDB remains healthy on the local Docker kernel, transactions pas
 - [x] Stream actual model answer chunks with a separate two-retry transport budget; preserve stage budgets (schema: one pass, mapping: five attempts, updated in milestone 14).
 - [x] Persist safe step progress, attempts and retry counts; hide all schema output and redact completed JSON string values before previewing.
 - [x] Add owner-scoped snapshots/SSE, session revocation, reconnects, cancellation fencing, interrupted-attempt recovery and retention cleanup.
-- [x] Navigate uploads and tailoring to dedicated activity URLs; show each step's inactive/active/success/failure state and review actions.
+- [x] Navigate approved uploads and tailoring to dedicated activity URLs (uploads first open redaction review, updated in milestone 16); show each step's inactive/active/success/failure state and review actions.
 - [x] Add a top-navigation notification dropdown with live step/attempt/retry summaries, deep links, keyboard dismissal and aligned mobile/desktop rows.
 - [x] Verify builds, both linters, 35 unit, 30 integration and 9 client tests; run the full browser journey with actual SSE chunks and a deliberate HTTP 429 retry. Inspect desktop/light and mobile/dark screenshots.
 
@@ -287,6 +289,19 @@ Completion: no schema correction loop or replay after interruptions/conflicts. M
 - [x] Verify lifecycle behavior against an isolated Compose project, startup ordering/failure handling and data preservation; update documentation. The actual `yarn start` sequence reached API HTTP 200. Script syntax, formatting and diff checks pass.
 
 Completion: the local setup command preserves volumes and gates application startup on database health. Test resources were removed; the existing user database was not restarted. [PR #16](https://github.com/adityaparab/cvantage/pull/16) records the dedicated feature change and merge status.
+
+### 16. Editable redaction review before parsing
+
+- [x] Use PII_NAME, PII_EMAIL, PII_PHONE and PII_LOCATION with clear detection limits; locally normalize equivalent explicit markers before model dispatch (user decision).
+- [x] Make editable review a dedicated upload step with selection redaction controls and explicit approval before parsing starts; route notifications and reloads appropriately.
+- [x] Verify edit/approval/privacy boundaries, marker handling and browser upload → review → activity flow. Full build/both linters, 45 unit, 41 integration and 15 client tests pass; Chromium journey and desktop/mobile inspection pass.
+
+Completion: user edits and approves redaction separately before any model call. Canonical markers and local aliases are documented; unknown placeholders remain intact. Merge before the database wipe step.
+
+### 17. Explicit database wipe command
+
+- [ ] Add `yarn db:wipe` with an explicit target and confirmation; preserve infrastructure and avoid unrelated databases.
+- [ ] Verify only with disposable data and document restart/reseeding behavior; merge on its own feature branch.
 
 ## Verification commands
 
@@ -344,5 +359,6 @@ yarn test:models
 | Seeded schema extraction | Supplied `schema/schema.json`, startup seed transaction, additive/evidence-based worker contract, baseline validation/editor/export support and historical compatibility | Full build/both linters; 40 unit, 36 integration, 10 client tests; complete Chromium journey and unchanged-schema version reuse | [PR #14](https://github.com/adityaparab/cvantage/pull/14), `feat/seeded-resume-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Single-pass schema modification | Stage-specific limits, terminal schema rejection/conflicts, restart protection and corrected activity labels | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and full resume journey | [PR #15](https://github.com/adityaparab/cvantage/pull/15), `feat/single-pass-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Local startup setup | `deploy/local/setup.cjs`, `setup`/`prestart` scripts and local/production startup documentation | Isolated Compose absent/stopped/running paths, stable container/data, failed-Docker startup abort, actual setup → client build → API HTTP 200; test resources cleaned up | [PR #16](https://github.com/adityaparab/cvantage/pull/16), `feat/local-startup-setup`, records the implementation and merge status; existing local database left running without restart |
+| Editable redaction review | Typed PII markers, local alias normalization, dedicated editable upload review with selection tools, approval-gated activity and notification routing | Full build/both linters; 45 unit, 41 integration, 15 client tests; Chromium flow and desktop/mobile inspection | Merge `feat/editable-redaction-review`; next: explicit database wipe command |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

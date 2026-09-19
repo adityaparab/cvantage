@@ -1,38 +1,61 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 interface PreparedJob {
   source: string;
   revision: number;
+  piiConfirmed?: boolean;
 }
-export default function PrivacyReview({
-  id,
-  onPrepared,
-}: {
-  id: string;
-  onPrepared: () => void;
-}) {
+const markers = [
+  ['PII_NAME', 'name'],
+  ['PII_EMAIL', 'email'],
+  ['PII_PHONE', 'phone number'],
+  ['PII_LOCATION', 'location or address'],
+];
+export default function PrivacyReview({ id }: { id: string }) {
   const [job, setJob] = useState<PreparedJob | null>(null);
   const [source, setSource] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [selection, setSelection] = useState([0, 0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
   useEffect(() => {
     let active = true;
     api<PreparedJob>(`/parsing-jobs/${id}`)
       .then((value) => {
-        if (active) {
-          setJob(value);
-          setSource(value.source);
+        if (!active) return;
+        if (value.piiConfirmed) {
+          navigate(`/activity/${id}`, { replace: true });
+          return;
         }
+        setJob(value);
+        setSource(value.source);
       })
       .catch(() => {
-        if (active) setError('Could not load redacted text. Refresh to retry.');
+        if (active)
+          setError(
+            'Could not load this upload. It may have expired or been deleted.',
+          );
       });
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, navigate]);
+  function edit(value: string) {
+    setSource(value);
+    setConfirmed(false);
+  }
+  function redact(marker: string) {
+    const [start, end] = selection;
+    if (start === end) return;
+    edit(source.slice(0, start) + marker + source.slice(end));
+    setSelection([0, 0]);
+    textarea.current?.focus();
+  }
   async function prepare() {
-    if (!job) return;
+    if (!job || !confirmed || busy) return;
     setBusy(true);
     setError('');
     try {
@@ -44,7 +67,7 @@ export default function PrivacyReview({
           confirmed: true,
         }),
       });
-      onPrepared();
+      navigate(`/activity/${id}`, { replace: true });
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : 'Could not confirm review',
@@ -53,46 +76,116 @@ export default function PrivacyReview({
       setBusy(false);
     }
   }
+  async function cancel() {
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/parsing-jobs/${id}/cancel`, { method: 'POST', body: '{}' });
+      navigate('/');
+    } catch {
+      setError('Could not delete this upload. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <section className="panel">
-      <h2>Review before AI processing</h2>
+    <div className="upload-review-page">
+      <Link className="text-button" to="/">
+        ← Back to workspace
+      </Link>
+      <p className="eyebrow">UPLOAD · YOUR REVIEW REQUIRED</p>
+      <h1>Review your redacted resume</h1>
       <p className="muted">
-        Check that your name, phone, email, and location are removed everywhere.
-        Edit anything we missed. Your contact details are stored separately for
-        your final download.
+        Edit the text below before continuing. No resume text is sent to AI
+        until you approve this review.
       </p>
-      {job ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void prepare();
-          }}
-        >
-          <label>
-            Redacted resume text
-            <textarea
-              rows={12}
-              value={source}
-              onChange={(event) => setSource(event.target.value)}
-              required
-            />
-          </label>
-          <label className="confirmation">
-            <input type="checkbox" required />I checked the text and removed
-            identifying details.
-          </label>
-          <button disabled={busy}>
-            {busy ? 'Saving…' : 'Confirm redacted text'}
-          </button>
-        </form>
-      ) : (
-        !error && <p role="status">Loading text…</p>
-      )}
-      {error && (
-        <p role="alert" className="error">
-          {error}
+      <section className="panel">
+        <h2>Check for personal details</h2>
+        <p>
+          We replace your supplied name, location and contact details, plus
+          detected emails and phone numbers. Edit any identifying details we
+          missed. Contact details stay separate for export.
         </p>
-      )}
-    </section>
+        {job ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void prepare();
+            }}
+          >
+            <p id="redaction-help" className="hint">
+              Select text to redact, or edit directly. Markers like [EMAIL
+              REMOVED] normalize locally before AI processing; unknown markers
+              stay unchanged.
+            </p>
+            <div
+              className="redaction-tools"
+              role="group"
+              aria-label="Replace selected text with a redaction marker"
+            >
+              {markers.map(([marker, label]) => (
+                <button
+                  key={marker}
+                  type="button"
+                  className="secondary"
+                  disabled={busy || selection[0] === selection[1]}
+                  aria-label={`Redact ${label}`}
+                  onClick={() => redact(marker)}
+                >
+                  <code>{marker}</code>
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+            <label>
+              Redacted resume text
+              <textarea
+                ref={textarea}
+                rows={16}
+                value={source}
+                disabled={busy}
+                aria-describedby="redaction-help"
+                onChange={(event) => edit(event.target.value)}
+                onSelect={(event) =>
+                  setSelection([
+                    event.currentTarget.selectionStart,
+                    event.currentTarget.selectionEnd,
+                  ])
+                }
+                required
+              />
+            </label>
+            <label className="confirmation">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                disabled={busy}
+                onChange={(event) => setConfirmed(event.target.checked)}
+                required
+              />
+              I checked the text and removed identifying details.
+            </label>
+            <button disabled={busy || !confirmed}>
+              {busy ? 'Saving…' : 'Approve redaction and start parsing'}
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy}
+              onClick={() => void cancel()}
+            >
+              Cancel and delete this upload
+            </button>
+          </form>
+        ) : (
+          !error && <p role="status">Loading text…</p>
+        )}
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+      </section>
+    </div>
   );
 }

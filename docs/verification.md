@@ -1,4 +1,4 @@
-# Verification record — 2026-09-18
+# Verification record — 2026-09-19
 
 The implemented workflow was verified locally with synthetic data. These checks used a local scripted LiteLLM-compatible proxy. The configured live providers were not called, so live quality evaluation remains pending.
 
@@ -6,12 +6,12 @@ The implemented workflow was verified locally with synthetic data. These checks 
 | --- | --- |
 | Backend and frontend builds | Pass |
 | Server ESLint and client Oxlint | Pass |
-| Backend unit tests | 40 pass |
+| Backend unit tests | 45 pass |
 | MongoDB/HTTP/graph integration tests | 41 pass against an isolated local replica set |
-| React behavior tests | 11 pass |
+| React behavior tests | 15 pass |
 | Real Chromium UI journey | Pass: register, upload DOCX, redact, five-attempt mapping review, approve, edit, tailor, approve variant, download PDF/DOCX, preview PDF, restore session, logout |
 | Browser workflow privacy | 15 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
-| Navigation/accessibility | Upload redirects to activity; notification links, Escape/focus, reload recovery, theme persistence/system changes, keyboard field navigation and 390 px mobile layout checked |
+| Navigation/accessibility | Upload opens editable redaction review; approval redirects to activity; notification links, Escape/focus, reload recovery, theme persistence/system changes, keyboard field navigation and 390 px mobile layout checked |
 | Upload formats | Real synthetic PDF, DOCX and legacy DOC fixtures extract; invalid signatures/content, cancellation and size boundaries covered |
 | Exports | PDF Unicode/multipage text and additional sections verified; DOCX contents verified; PDF and LibreOffice-rendered DOCX visually inspected |
 | Retention | Acceptance removes temporary parsing state and PII expiry; cancellation removes draft and PII atomically; unfinished records carry 30-day TTL and expired jobs cannot be opened |
@@ -44,3 +44,7 @@ The Chromium journey passed with the installed Chrome executable (`BROWSER_EXECU
 ## Local startup setup — 2026-09-19
 
 Verified `yarn setup` against a uniquely named disposable Compose project: an absent container starts, a running container stops/starts without recreation, and a stopped container starts without another stop. Each run waited for MongoDB health; a stored marker survived both restart paths. An unreachable Docker daemon made `yarn start` fail before the client build or NestJS launch. A successful actual `yarn start` ran setup, built the client, compiled/started NestJS and returned HTTP 200 from `/api/health`. The pre-existing local MongoDB container retained its ID and start time. Temporary test services, network and test volumes were removed. Script syntax/formatting and diff checks passed; the unrelated application test suite was not rerun for this script-only change.
+
+## Editable redaction review — 2026-09-19
+
+Full build/both linters, 45 unit tests, 41 MongoDB/HTTP integration tests and 15 client tests passed. Integration checks prove no model call before approval, edited text persistence, canonical marker delivery, repeated PII checks, and stale-approval rejection. Client tests cover selection redaction, checkbox reset after edits, failed approval preserving edits, and links recovering to the appropriate stage. The Chromium journey verifies separate upload review, reload/notification links, typed markers, manual edits, no pre-approval model requests, and the complete parsing/review/tailoring/export flow. Desktop/mobile review screenshots were inspected; artifacts are in `/tmp/cvantage-redaction-browser`. Marker normalization is local and handles explicit aliases; unknown placeholders remain unchanged. Live-provider evaluation remains separate.

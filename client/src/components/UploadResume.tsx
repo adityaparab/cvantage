@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 interface Job {
   _id: string;
   status: string;
+  piiConfirmed?: boolean;
 }
 export default function UploadResume({
   onUploaded,
@@ -115,7 +116,9 @@ export default function UploadResume({
               key={item._id}
               onClick={() => onUploaded(item._id)}
             >
-              Resume upload · {item.status.replaceAll('_', ' ')}
+              {item.piiConfirmed
+                ? `Resume parsing · ${item.status.replaceAll('_', ' ')}`
+                : 'Resume upload · redaction review required'}
             </button>
           ))}
         </>

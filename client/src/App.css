@@ -470,3 +470,35 @@ input[type='checkbox'] {
     font-size: 14px;
   }
 }
+
+.redaction-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.panel .redaction-tools button {
+  width: auto;
+  margin-top: 0;
+  flex: 1 1 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 14px;
+}
+.redaction-tools span {
+  font-size: 12px;
+  font-weight: 400;
+}
+.redaction-tools button:disabled {
+  cursor: default;
+}
+.upload-review-page textarea {
+  line-height: 1.6;
+  resize: vertical;
+  font-weight: 400;
+}
+.upload-review-page h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  margin: 20px 0 12px;
+}

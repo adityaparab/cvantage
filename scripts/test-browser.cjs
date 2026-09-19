@@ -225,14 +225,76 @@ async function main() {
     await page
       .getByRole('button', { name: 'Upload resume', exact: true })
       .click();
-    await page.waitForURL('**/activity/*');
-    const parsingUrl = page.url();
+    await page.waitForURL('**/uploads/*/review');
+    const reviewUrl = page.url();
+    await page.reload();
+    await page
+      .getByRole('heading', { name: 'Review your redacted resume' })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByRole('heading', { name: 'Extract resume content' })
+        .count(),
+      0,
+    );
     const redacted = await page.getByLabel('Redacted resume text').inputValue();
     assert(!/Synthetic Applicant|applicant@example.test|Warsaw/.test(redacted));
+    for (const marker of ['PII_NAME', 'PII_EMAIL', 'PII_PHONE', 'PII_LOCATION'])
+      assert(redacted.includes(marker));
+    assert.equal(
+      received.length,
+      0,
+      'No model calls before redaction approval',
+    );
+    await page.getByRole('button', { name: /Workflow notifications/ }).click();
+    const reviewLink = page
+      .getByRole('region', { name: 'Active workflows' })
+      .getByRole('link', { name: /Upload review/ });
+    await reviewLink.waitFor();
+    assert.equal(
+      new URL(await reviewLink.getAttribute('href'), origin).href,
+      reviewUrl,
+    );
+    await page.keyboard.press('Escape');
+    const reviewText = page.getByLabel('Redacted resume text');
+    await reviewText.fill(
+      'Missed Person\n' + redacted + '\nExtra contact [EMAIL REMOVED]',
+    );
+    await reviewText.press('Control+Home');
+    await reviewText.press('Shift+End');
+    await page
+      .getByRole('button', { name: 'Redact name', exact: true })
+      .click();
+    assert(!(await reviewText.inputValue()).includes('Missed Person'));
+    await page.screenshot({
+      path: join(output, 'redaction-review.png'),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      'Redaction review mobile overflow',
+    );
+    await reviewText.scrollIntoViewIfNeeded();
+    await reviewText.screenshot({
+      path: join(output, 'redaction-editor-mobile.png'),
+    });
+    await page.screenshot({
+      path: join(output, 'redaction-review-mobile.png'),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    assert.equal(received.length, 0, 'Editing review does not call a model');
     await page
       .getByLabel('I checked the text and removed identifying details.')
       .check();
-    await page.getByRole('button', { name: 'Confirm redacted text' }).click();
+    await page
+      .getByRole('button', { name: 'Approve redaction and start parsing' })
+      .click();
+    await page.waitForURL('**/activity/*');
+    const parsingUrl = page.url();
     await page.getByRole('link', { name: '← Back to workspace' }).click();
     await page.getByRole('button', { name: /Workflow notifications/ }).click();
     await page
@@ -314,6 +376,8 @@ async function main() {
       origin + '/api/workflows/' + parsingUrl.split('/').at(-1),
     );
     const activity = await activityResponse.json();
+    assert(!JSON.stringify(received).includes('EMAIL REMOVED'));
+    assert(!JSON.stringify(received).includes('Missed Person'));
     assert.equal(activity.preparationAttempts, 1);
     assert.equal(activity.mappingAttempts, 5);
     assert(

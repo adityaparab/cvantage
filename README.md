@@ -30,7 +30,7 @@ The backend serves the client and API at `http://localhost:3000`. API routes use
 ## Workflow and privacy
 
 - Upload PDF, DOCX or legacy DOC up to 20,000,000 bytes. Originals are processed in memory and discarded after extraction. Image-only documents need a readable replacement; OCR is not implemented.
-- Enter contact details separately and review the redacted source before any model call. User review is necessary for uncertain names and locations.
+- Enter contact details separately, then edit the redacted source on its own review page before any model call. Use PII_NAME, PII_EMAIL, PII_PHONE and PII_LOCATION for missed details; common equivalent markers normalize locally. Approval starts parsing.
 - Schema modification has one worker–judge pass; value mapping has at most five attempts. Schema work stays in the background. Every parsed resume awaits your approval or rejection; accepted resumes keep their extraction version.
 - Edit nested fields, additional sections and separate contact details. Tailoring preserves the source and creates a version for explicit review.
 - Generate PDF/DOCX on demand. Contact details are restored only on the server; files are not retained.
@@ -55,6 +55,6 @@ Browser tests use synthetic data, a random disposable database and a local deter
 
 [PROJECT.md](PROJECT.md) defines product behavior. [PLAN.md](PLAN.md) tracks implementation, PRs, verification and pending live evaluation. [AGENT.md](AGENT.md) contains agent guidance and installed skill routing.
 
-Successful uploads open a live workflow activity page. Follow preparation, extraction, review, loop attempts and retries there; the navigation bell reopens active work. Schema processing stays internal, and you approve or reject only parsed resume content. Appearance supports Light, Dark and System (the default).
+Successful uploads open an editable redaction review. Approving it opens the live workflow activity page. Follow preparation, extraction, review, loop attempts and retries there; the navigation bell reopens active work. Schema processing stays internal, and you approve or reject only parsed resume content. Appearance supports Light, Dark and System (the default).
 
 The authoritative resume schema is [`schema/schema.json`](schema/schema.json). It is seeded into MongoDB on startup. The worker can propose only source-supported missing fields; existing definitions are preserved and resumes with no new fields reuse the current version. Ship the `schema/` directory with the built server.

@@ -8,6 +8,7 @@ import type { FormEvent } from 'react';
 import { api, ApiError, setCsrfToken } from './lib/api';
 import './App.css';
 import ThemeSelect from './components/ThemeSelect';
+import PrivacyReview from './components/PrivacyReview';
 interface User {
   id: string;
   email: string;
@@ -24,7 +25,7 @@ export default function App() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const { workflowId, resumeId: selected } = useParams();
+  const { workflowId, uploadId, resumeId: selected } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const refreshResumes = useCallback(() => {
@@ -127,7 +128,9 @@ export default function App() {
         {!ready ? (
           <p role="status">Loading your workspace…</p>
         ) : user ? (
-          workflowId ? (
+          uploadId ? (
+            <PrivacyReview key={uploadId} id={uploadId} />
+          ) : workflowId ? (
             <WorkflowActivity
               key={workflowId}
               id={workflowId}
@@ -149,7 +152,7 @@ export default function App() {
                 />
               ) : (
                 <UploadResume
-                  onUploaded={(id) => navigate(`/activity/${id}`)}
+                  onUploaded={(id) => navigate(`/uploads/${id}/review`)}
                 />
               )}
               <section className="panel">
