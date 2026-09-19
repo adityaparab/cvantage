@@ -1,4 +1,5 @@
 import { useCallback, useId, useRef, useState } from 'react';
+import ResumeDeleteButton from './ResumeDeleteButton';
 import type { FieldSchema } from '../lib/schema';
 
 function Icon({ kind }: { kind: 'edit' | 'accept' | 'cancel' }) {
@@ -34,6 +35,8 @@ export default function InlineResumeField({
   disabled,
   onStart,
   onFinish,
+  onRemove,
+  required,
 }: {
   schema: FieldSchema;
   value: unknown;
@@ -43,6 +46,8 @@ export default function InlineResumeField({
   disabled: boolean;
   onStart: (trigger: HTMLButtonElement) => void;
   onFinish: () => void;
+  onRemove?: () => void;
+  required?: boolean;
 }) {
   const id = useId();
   const [draft, setDraft] = useState<string | boolean>('');
@@ -172,6 +177,14 @@ export default function InlineResumeField({
         >
           <Icon kind="edit" />
         </button>
+        {!editing && onRemove && (
+          <ResumeDeleteButton
+            label={label}
+            onClick={onRemove}
+            required={required}
+            disabled={disabled}
+          />
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { emptyValue, labelFor } from '../lib/schema';
 import type { FieldSchema } from '../lib/schema';
 import InlineResumeField from './InlineResumeField';
+import ResumeDeleteButton from './ResumeDeleteButton';
 import './ResumeFields.css';
 
 interface FieldProps {
@@ -9,12 +10,16 @@ interface FieldProps {
   value: unknown;
   onChange: (value: unknown) => void;
   label: string;
+  onRemove?: () => void;
+  required?: boolean;
 }
 interface Editing {
+  allowDelete: boolean;
   path: string | null;
   disabled: boolean;
   start: (path: string, trigger: HTMLButtonElement) => void;
   finish: () => void;
+  remove: (label: string, action: () => void) => void;
 }
 
 function hasContent(value: unknown): boolean {
@@ -47,6 +52,19 @@ function ObjectFields({
       label={field.title || (key === 'basics' ? 'Profile' : labelFor(key))}
       path={`${path}/${key}`}
       editing={editing}
+      required={schema.required?.includes(key)}
+      onRemove={
+        editing.allowDelete && Object.hasOwn(object, key)
+          ? () => {
+              const updated = { ...object };
+              delete updated[key];
+              editing.remove(
+                field.title || (key === 'basics' ? 'Profile' : labelFor(key)),
+                () => onChange(updated),
+              );
+            }
+          : undefined
+      }
       onChange={(next) => {
         const updated = { ...object, [key]: next };
         if (next === '' && !schema.required?.includes(key)) delete updated[key];
@@ -78,11 +96,25 @@ function ObjectFields({
 }
 
 function ResumeNode(props: FieldProps & { path: string; editing: Editing }) {
-  const { schema, value, onChange, label, path, editing } = props;
+  const { schema, value, onChange, label, path, editing, onRemove, required } =
+    props;
+  const heading = (
+    <div className="resume-section-heading">
+      <h4>{label}</h4>
+      {onRemove && (
+        <ResumeDeleteButton
+          label={label}
+          onClick={onRemove}
+          disabled={editing.disabled || editing.path !== null}
+          required={required}
+        />
+      )}
+    </div>
+  );
   if (schema.type === 'object')
     return (
       <section className="resume-section" aria-label={label}>
-        <h4>{label}</h4>
+        {heading}
         <ObjectFields {...props} />
       </section>
     );
@@ -90,7 +122,7 @@ function ResumeNode(props: FieldProps & { path: string; editing: Editing }) {
     const items = Array.isArray(value) ? value : [];
     return (
       <section className="resume-section" aria-label={label}>
-        <h4>{label}</h4>
+        {heading}
         <ul
           className={`resume-items ${schema.items.type === 'object' ? 'resume-entries' : ''}`}
         >
@@ -119,28 +151,18 @@ function ResumeNode(props: FieldProps & { path: string; editing: Editing }) {
                   }
                 />
               )}
-              <button
-                type="button"
-                className="resume-remove"
-                aria-label={`Remove ${label.toLowerCase()} ${index + 1}`}
-                title={`Remove ${label.toLowerCase()} ${index + 1}`}
-                disabled={editing.disabled || editing.path !== null}
-                onClick={() => onChange(items.filter((_, i) => i !== index))}
-              >
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
-                </svg>
-              </button>
+              {editing.allowDelete && (
+                <ResumeDeleteButton
+                  className="resume-remove"
+                  label={`${label} ${index + 1}`}
+                  disabled={editing.disabled || editing.path !== null}
+                  onClick={() =>
+                    editing.remove(`${label} ${index + 1}`, () =>
+                      onChange(items.filter((_, i) => i !== index)),
+                    )
+                  }
+                />
+              )}
             </li>
           ))}
         </ul>
@@ -161,6 +183,8 @@ function ResumeNode(props: FieldProps & { path: string; editing: Editing }) {
       value={value}
       label={label}
       onChange={onChange}
+      onRemove={onRemove}
+      required={required}
       editing={editing.path === path}
       disabled={
         editing.disabled || (editing.path !== null && editing.path !== path)
@@ -178,12 +202,18 @@ export function ResumeFields({
   label = 'Resume',
   onEditingChange,
   disabled = false,
+  allowDelete = true,
 }: Omit<FieldProps, 'label'> & {
   label?: string;
   onEditingChange?: (editing: boolean) => void;
   disabled?: boolean;
+  allowDelete?: boolean;
 }) {
   const [path, setPath] = useState<string | null>(null);
+  const [removed, setRemoved] = useState<{
+    label: string;
+    value: unknown;
+  } | null>(null);
   const document = useRef<HTMLElement>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
   useLayoutEffect(() => {
@@ -194,6 +224,7 @@ export function ResumeFields({
     }
   }, [path]);
   const editing: Editing = {
+    allowDelete,
     path,
     disabled,
     start: (nextPath, button) => {
@@ -201,12 +232,27 @@ export function ResumeFields({
       setPath(nextPath);
       onEditingChange?.(true);
     },
+    remove: (removedLabel, action) => {
+      action();
+      setRemoved({ label: removedLabel, value });
+      document.current?.focus();
+    },
     finish: () => {
       setPath(null);
       onEditingChange?.(false);
     },
   };
-  const props = { schema, value, onChange, label, path: '', editing };
+  const props = {
+    schema,
+    value,
+    label,
+    path: '',
+    editing,
+    onChange: (next: unknown) => {
+      setRemoved(null);
+      onChange(next);
+    },
+  };
   return (
     <article
       className="resume-document"
@@ -216,9 +262,28 @@ export function ResumeFields({
     >
       <p className="resume-edit-hint">
         {path === null
-          ? 'Use the pencil beside any detail to edit it.'
+          ? allowDelete
+            ? 'Use the pencil to edit a detail or the trash bin to delete it.'
+            : 'Use the pencil beside any detail to edit it.'
           : 'Accept or cancel this field’s edit before continuing.'}
       </p>
+      {removed && (
+        <div className="resume-deletion" role="status">
+          <span>Deleted {removed.label}.</span>
+          <button
+            type="button"
+            className="resume-undo"
+            disabled={disabled || path !== null}
+            onClick={() => {
+              onChange(removed.value);
+              setRemoved(null);
+              document.current?.focus();
+            }}
+          >
+            Undo deletion
+          </button>
+        </div>
+      )}
       {schema.type === 'object' ? (
         <ObjectFields {...props} />
       ) : (

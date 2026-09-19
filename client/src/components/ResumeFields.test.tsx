@@ -105,7 +105,7 @@ it('edits discovered nested fields and adds/removes array entries without distur
   expect(
     (
       screen.getByRole('button', {
-        name: 'Remove education 1',
+        name: 'Delete Education 1',
       }) as HTMLButtonElement
     ).disabled,
   ).toBe(true);
@@ -117,7 +117,7 @@ it('edits discovered nested fields and adds/removes array entries without distur
   expect(change).toHaveBeenLastCalledWith({
     education: [{ degree: 'Corrected' }, { degree: 'Second' }, {}],
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Remove education 1' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete Education 1' }));
   expect(change).toHaveBeenLastCalledWith({
     education: [{ degree: 'Second' }, {}],
   });
@@ -213,4 +213,90 @@ it('edits primitive array items and safely renders multiline text as text', () =
   expect(change).toHaveBeenLastCalledWith({
     highlights: ['Updated\nSecond', '<script>example</script>'],
   });
+});
+
+it('deletes individual fields without altering siblings or the schema, with undo', () => {
+  const { change } = setup(simpleSchema, { summary: 'Engineer', role: 'Lead' });
+  fireEvent.click(screen.getByRole('button', { name: 'Delete Summary' }));
+  expect(change).toHaveBeenLastCalledWith({ role: 'Lead' });
+  expect(screen.queryByText('Engineer')).toBeNull();
+  expect(screen.getByRole('status').textContent).toContain('Deleted Summary');
+  expect(simpleSchema.properties?.summary).toEqual({ type: 'string' });
+  fireEvent.click(screen.getByRole('button', { name: 'Undo deletion' }));
+  expect(change).toHaveBeenLastCalledWith({
+    summary: 'Engineer',
+    role: 'Lead',
+  });
+  expect(screen.getByText('Engineer')).toBeTruthy();
+});
+
+it('deletes entire object/array groups and restores all nested values with undo', () => {
+  const schema: FieldSchema = {
+    type: 'object',
+    properties: {
+      basics: { type: 'object', properties: { summary: { type: 'string' } } },
+      work: {
+        type: 'array',
+        items: { type: 'object', properties: { position: { type: 'string' } } },
+      },
+    },
+  };
+  const initial = {
+    basics: { summary: 'Engineer' },
+    work: [{ position: 'Lead' }, { position: 'Developer' }],
+  };
+  const { change } = setup(schema, initial);
+  fireEvent.click(screen.getByRole('button', { name: 'Delete Profile' }));
+  expect(change).toHaveBeenLastCalledWith({ work: initial.work });
+  fireEvent.click(screen.getByRole('button', { name: 'Undo deletion' }));
+  expect(change).toHaveBeenLastCalledWith(initial);
+  fireEvent.click(screen.getByRole('button', { name: 'Delete Work' }));
+  expect(change).toHaveBeenLastCalledWith({ basics: initial.basics });
+  expect(screen.queryByText('Developer')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Undo deletion' }));
+  expect(change).toHaveBeenLastCalledWith(initial);
+});
+
+it('protects required values and blocks deletion while editing another field', () => {
+  const { change } = setup(
+    { ...simpleSchema, required: ['summary'] },
+    { summary: 'Engineer', role: 'Lead' },
+  );
+  const required = screen.getByRole<HTMLButtonElement>('button', {
+    name: 'Delete Summary',
+  });
+  expect(required.disabled).toBe(true);
+  expect(required.title).toContain('required');
+  fireEvent.click(required);
+  expect(change).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Summary' }));
+  expect(
+    screen.getByRole<HTMLButtonElement>('button', { name: 'Delete Role' })
+      .disabled,
+  ).toBe(true);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Cancel Summary change' }),
+  );
+  expect(
+    screen.getByRole<HTMLButtonElement>('button', { name: 'Delete Role' })
+      .disabled,
+  ).toBe(false);
+});
+
+it('never lets undo overwrite a later accepted edit', () => {
+  const { change } = setup(simpleSchema, { summary: 'Engineer', role: 'Lead' });
+  fireEvent.click(screen.getByRole('button', { name: 'Delete Role' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Summary' }));
+  expect(
+    screen.getByRole<HTMLButtonElement>('button', { name: 'Undo deletion' })
+      .disabled,
+  ).toBe(true);
+  fireEvent.change(screen.getByLabelText('Summary'), {
+    target: { value: 'Updated engineer' },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Accept Summary change' }),
+  );
+  expect(change).toHaveBeenLastCalledWith({ summary: 'Updated engineer' });
+  expect(screen.queryByRole('button', { name: 'Undo deletion' })).toBeNull();
 });

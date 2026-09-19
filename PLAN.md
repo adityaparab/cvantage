@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 0–17 are implemented and merged. Milestone 18 is implemented and verified on `feat/inline-resume-review`.
-**Next action:** live provider evaluation and Railway remain separate. [PR #19](https://github.com/adityaparab/cvantage/pull/19) records the inline review change and its merge status.
+**Current state:** milestones 0–18 are merged. Milestone 19 is implemented and verified on `feat/resume-field-deletion`; milestone 20 follows on its own branch.
+**Next action:** add field/group trash controls, verify and merge; then fix immediate redaction text display and loading/retry behavior.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -31,8 +31,10 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 15. Local startup setup command | Complete | 9 | Real isolated Compose absent/stopped/running checks; data preserved; setup failure blocks startup; full yarn start reaches HTTP 200 |
 | 16. Editable redaction review before parsing | Complete | 3, 12 | Full build/both linters; 45 unit, 41 integration, 15 client tests; browser review → activity → export and desktop/mobile inspection |
 | 17. Explicit database wipe command | Complete | 15 | 49 integration tests including 8 wipe regressions; actual interactive yarn command cancellation/confirmation; user database untouched |
-
 | 18. Resume review with inline editing | Complete | 5, 10, 13 | Full build/client lint; 21 client tests; Chromium inline review/source/tailored edits, touch/keyboard and exports; light/dark mobile inspection |
+
+| 19. Delete resume fields and groups | Complete | 18 | Full build/client lint; 25 client tests; Chromium deletion/undo and persisted deletions through tailoring/export |
+| 20. Redaction review readiness | Planned | 16 | Immediate upload result, loading indicator, retry/refresh and navigation regressions |
 
 ### How to maintain progress
 
@@ -315,6 +317,18 @@ Completion: the command drops only the explicitly configured database, protects 
 - [x] Verify nested/array fields, optional values, keyboard navigation, mobile/theme layouts and the browser review → edit → tailor → export journey.
 - [x] Update product/verification documentation, push `feat/inline-resume-review` and create [PR #19](https://github.com/adityaparab/cvantage/pull/19); its linked status records the merge.
 
+### 19. Delete resume fields and groups
+
+- [x] Add accessible trash controls to populated fields, groups and existing array entries; preserve schema definitions and required data rules.
+- [x] Keep deletion local until approval/save and support undo; block deletion during unfinished field edits.
+- [x] Verify deletion/undo, nested and group changes, persistence, keyboard/touch layouts; update documentation and PR tracking.
+
+### 20. Redaction review readiness
+
+- [ ] Display the upload response immediately using memory-only state; load direct links with an explicit progress indicator.
+- [ ] Refresh unavailable text, expose recovery for failed/stalled requests and preserve edits once ready.
+- [ ] Verify first navigation without reload, delayed content, retries and existing redaction/approval privacy boundaries; update documentation and PR tracking.
+
 ## Verification commands
 
 Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
@@ -375,5 +389,7 @@ yarn test:models
 | Database wipe command | `scripts/wipe-database.cjs`, `yarn db:wipe`, exact-name confirmation and reset/reseeding documentation | 49 real database integration tests including 8 wipe cases; actual terminal cancellation/confirmation; sibling database preserved; fresh startup reseeds exact baseline | [PR #18](https://github.com/adityaparab/cvantage/pull/18), `feat/database-wipe`; live provider evaluation and Railway remain separate |
 
 | Inline resume review | Shared readable document layout, per-field drafts/check/cross, collapsed empty details, keyboard/touch controls and unfinished-edit guards | Full build/client lint; 21 client tests; complete synthetic Chromium workflow and desktop/mobile visual inspection | [PR #19](https://github.com/adityaparab/cvantage/pull/19), `feat/inline-resume-review`; merge status recorded on GitHub |
+
+| Delete resume fields/groups | Shared trash controls, single-deletion undo, required-field/edit protection, unchanged schemas | Full build/client lint; 25 client tests; Chromium proves field/group deletions survive approval, reload and tailoring; desktop/mobile inspection | `feat/resume-field-deletion`; merge PR before redaction loading fix |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

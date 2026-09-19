@@ -51,6 +51,16 @@ const proxy = http.createServer(async (request, response) => {
         input.sourceResume.basics.summary,
         'User corrected experience with internal tools.',
       );
+      assert.equal(
+        input.sourceResume.skills,
+        undefined,
+        'Deleted groups stay deleted',
+      );
+      assert.equal(
+        input.sourceResume.work[0].endDate,
+        undefined,
+        'Deleted fields stay deleted',
+      );
       result = {
         ...input.sourceResume,
         basics: {
@@ -529,6 +539,23 @@ async function main() {
     } finally {
       await touchContext.close();
     }
+    await resumeReview
+      .getByRole('button', { name: 'Delete Skills', exact: true })
+      .click();
+    assert.equal(
+      await resumeReview.getByText('Engineering', { exact: true }).count(),
+      0,
+    );
+    await resumeReview.getByRole('button', { name: 'Undo deletion' }).click();
+    assert(
+      await resumeReview.getByText('Engineering', { exact: true }).isVisible(),
+    );
+    await resumeReview
+      .getByRole('button', { name: 'Delete End Date', exact: true })
+      .click();
+    await resumeReview
+      .getByRole('button', { name: 'Delete Skills', exact: true })
+      .click();
     await page
       .getByLabel(
         'I reviewed these fields for accuracy and removed identifying details.',
@@ -544,6 +571,13 @@ async function main() {
         exact: true,
       }),
     });
+    await editor.getByText('Example Labs', { exact: true }).waitFor();
+    assert.equal(
+      await editor.getByText('Engineering', { exact: true }).count(),
+      0,
+    );
+    assert.equal(await editor.getByText('2024', { exact: true }).count(), 0);
+    assert(await editor.getByText('Example Labs', { exact: true }).isVisible());
     await editor
       .getByRole('button', { name: 'Edit Professional Summary', exact: true })
       .click();
