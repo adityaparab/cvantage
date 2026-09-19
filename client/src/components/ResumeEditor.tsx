@@ -32,6 +32,7 @@ export default function ResumeEditor({
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(false)
   useEffect(() => {
     let active = true
     async function load() {
@@ -60,7 +61,7 @@ export default function ResumeEditor({
     }
   }, [id])
   async function save(contact = false) {
-    if (!resume || !pii) return
+    if (!resume || !pii || busy || (!contact && editing)) return
     setBusy(true)
     setError('')
     setMessage('')
@@ -110,8 +111,14 @@ export default function ResumeEditor({
               void save()
             }}
           >
-            <ResumeFields schema={schema} value={data} onChange={setData} />
-            <button disabled={busy}>Save resume changes</button>
+            <ResumeFields
+              schema={schema}
+              value={data}
+              onChange={setData}
+              onEditingChange={setEditing}
+              disabled={busy}
+            />
+            <button disabled={busy || editing}>Save resume changes</button>
           </form>
           {pii && (
             <form
@@ -151,12 +158,16 @@ export default function ResumeEditor({
           )}
           <ExportControls
             resumeId={resume._id}
-            disabled={JSON.stringify(data) !== JSON.stringify(resume.data)}
+            disabled={
+              editing || JSON.stringify(data) !== JSON.stringify(resume.data)
+            }
           />
           <TailoringPanel
             resume={resume}
             schema={schema}
-            unsaved={JSON.stringify(data) !== JSON.stringify(resume.data)}
+            unsaved={
+              editing || JSON.stringify(data) !== JSON.stringify(resume.data)
+            }
           />
         </>
       ) : (

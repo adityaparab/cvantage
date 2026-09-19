@@ -8,7 +8,7 @@ The implemented workflow was verified locally with synthetic data. These checks 
 | Server ESLint and client Oxlint | Pass |
 | Backend unit tests | 45 pass |
 | MongoDB/HTTP/graph integration tests | 49 pass against an isolated local replica set |
-| React behavior tests | 15 pass |
+| React behavior tests | 21 pass |
 | Real Chromium UI journey | Pass: register, upload DOCX, redact, five-attempt mapping review, approve, edit, tailor, approve variant, download PDF/DOCX, preview PDF, restore session, logout |
 | Browser workflow privacy | 15 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
 | Navigation/accessibility | Upload opens editable redaction review; approval redirects to activity; notification links, Escape/focus, reload recovery, theme persistence/system changes, keyboard field navigation and 390 px mobile layout checked |
@@ -52,3 +52,7 @@ Full build/both linters, 45 unit tests, 41 MongoDB/HTTP integration tests and 15
 ## Database wipe command — 2026-09-19
 
 All 49 integration tests pass, including 8 database-wipe cases. Disposable databases prove exact confirmation is required, system/invalid names are refused, credentials are not exposed on configuration errors, and wiping leaves sibling databases intact. The next real database-service initialization recreates indexes and seeds the exact supplied schema once. The actual `yarn db:wipe` terminal prompt was exercised for cancellation and exact-name confirmation. Environment precedence (including explicit empty values) was verified before testing to ensure `.env` could not redirect a disposable target. Script syntax/formatting and server lint pass. The user's database was never wiped; temporary test data and the isolated test MongoDB instance were removed.
+
+## Inline resume review — 2026-09-19
+
+Full build, client lint and all 21 client tests pass. Field regressions cover readable defaults, one active editor, accepted versus cancelled drafts, Escape and focus restoration, nested/discovered fields, array additions/removals, optional clearing, zero/false values, numeric validation and approval payloads. The Chromium journey passes against isolated MongoDB and a local scripted proxy, including review/source/tailored editing, pending-edit guards, hover/keyboard pencil visibility, touch targets, light/dark and 390 px layouts, persisted corrections, and PDF/DOCX exports. Desktop and mobile review screenshots were inspected in `/tmp/cvantage-inline-browser`. Backend unit/integration suites were not rerun for this frontend-only change; their preceding results above remain unchanged. No live model calls were made.

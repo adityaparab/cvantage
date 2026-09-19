@@ -88,6 +88,8 @@ Run `yarn build:server && node scripts/smoke-models.cjs` after configuring `.env
 
 ## Review and editing
 
+Parsed reviews, saved resumes and tailored versions share `ResumeFields`: populated values render as a resume document; empty optional details remain in collapsed controls. Only one field per document enters edit mode. Local field drafts apply only on check and discard on cross/Escape, restoring keyboard focus. Pencil controls appear on hover/focus and remain visible with larger targets on touch devices. Save/approval/export and dependent tailoring controls are disabled during an unfinished edit. Field acceptance updates the local document; the existing overall save or approval action persists it. Separate contact editing and pre-LLM redaction review retain their own forms.
+
 Schema generation, validation and publication are internal background operations. Exhausted schema preparation reports a processing failure without returning proposals or schema judge output to the review API. There is no user schema approval endpoint. Every mapped resume, including one accepted by the judge, waits for explicit user approval or rejection. Approval validates content/PII and atomically saves the resume and deletes temporary state; rejection deletes the draft. Existing resumes edit against their recorded version. Contact updates compare contact and resume revisions.
 
 ## Tailoring
