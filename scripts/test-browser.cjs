@@ -50,7 +50,11 @@ const proxy = http.createServer(async (request, response) => {
         summary: instructions.startsWith('Analyze the source')
           ? 'Experience building internal tools.'
           : 'Role focused on internal tools.',
-        findings: ['Reliable tools and software delivery.'],
+        findings: [
+          'Reliable tools and software delivery.',
+          'The supplied description emphasizes maintaining useful internal software and delivering reliable tools for teams.',
+          'Review the wording suggestions against the original experience before applying changes to the tailored copy.',
+        ],
       };
     else if (instructions.startsWith('Map ALL')) result = source;
     else if (instructions.startsWith('Tailor sourceResume')) {
@@ -74,6 +78,10 @@ const proxy = http.createServer(async (request, response) => {
           ...input.sourceResume.basics,
           summary: 'Software engineer focused on internal tools.',
         },
+        work: input.sourceResume.work.map((item) => ({
+          ...item,
+          highlights: ['Delivered reliable internal tools.'],
+        })),
       };
     } else {
       const accept = input.stage === 'schema' || ++mappingJudgments > 5;
@@ -674,20 +682,52 @@ async function main() {
         'I removed names, contact information, and locations from this description.',
       )
       .check();
-    await page.getByRole('button', { name: 'Create tailored version' }).click();
-    await page.waitForURL('**/activity/*');
+    await page.getByRole('button', { name: 'Analyze and tailor' }).click();
+    await page.waitForURL('**/tailoring/analysis/*');
     await page
       .getByRole('heading', { name: 'Analyze resume', exact: true })
       .waitFor();
-    await page.locator('[aria-label="Analyze resume output"]').waitFor();
     await page
-      .locator('[aria-label="Analyze job description output"]')
+      .locator('.activity-step.active [aria-label="Analyze resume output"]')
+      .waitFor();
+    await page.reload();
+    await page
+      .locator(
+        '.activity-step.active [aria-label="Analyze job description output"]',
+      )
       .waitFor();
     await page.screenshot({
       path: join(output, 'tailoring-analysis.png'),
       fullPage: true,
     });
-    await page.getByRole('link', { name: 'Review tailored resume' }).click();
+    await page
+      .getByRole('link', { name: 'Review suggestions', exact: true })
+      .click();
+    await page.waitForURL('**/suggestions');
+    await page.getByRole('heading', { name: 'Choose your changes' }).waitFor();
+    await page
+      .getByRole('checkbox', { name: 'Experience 1 · Highlight 1' })
+      .uncheck();
+    await page.screenshot({
+      path: join(output, 'tailoring-suggestions.png'),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({
+      path: join(output, 'tailoring-suggestions-mobile.png'),
+      fullPage: true,
+    });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    );
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page
+      .getByRole('button', { name: 'Apply selected suggestions' })
+      .click();
+    await page.waitForURL('**/resume');
+    await page.reload();
     await page
       .getByRole('heading', { name: 'Review your tailored version' })
       .waitFor();
@@ -696,6 +736,26 @@ async function main() {
       exact: true,
     });
     assert.equal(await tailoredReview.getByRole('textbox').count(), 0);
+    assert(
+      (await tailoredReview.textContent()).includes(
+        'Software engineer focused on internal tools.',
+      ),
+    );
+    assert(
+      (await tailoredReview.textContent()).includes(
+        'Built reliable internal tools.',
+      ),
+    );
+    assert(
+      !(await tailoredReview.textContent()).includes(
+        'Delivered reliable internal tools.',
+      ),
+    );
+    await page.screenshot({
+      path: join(output, 'tailoring-result.png'),
+      fullPage: true,
+    });
+
     await tailoredReview
       .getByRole('button', { name: 'Edit Professional Summary', exact: true })
       .click();
@@ -724,6 +784,19 @@ async function main() {
       .getByRole('button', { name: 'Approve tailored version', exact: true })
       .click();
     await page.getByText('This saved version is approved.').waitFor();
+    const approvedVersionUrl = page.url();
+    await page
+      .getByRole('navigation', { name: 'Tailoring stages' })
+      .getByRole('link', { name: 'Analysis' })
+      .click();
+    await page
+      .getByText('Experience building internal tools.', { exact: false })
+      .waitFor();
+    await page
+      .getByRole('link', { name: 'Open updated resume', exact: true })
+      .click();
+    assert.equal(page.url(), approvedVersionUrl);
+    await page.getByText('This saved version is approved.').waitFor();
     const exports = page.locator('section.exports').filter({
       has: page.getByRole('heading', {
         name: 'Download this tailored version',
@@ -749,6 +822,98 @@ async function main() {
     await page.getByTitle('Resume PDF preview').waitFor();
     await page.getByRole('button', { name: 'Close preview' }).click();
     await page
+      .getByRole('link', { name: '← Back to tailoring', exact: true })
+      .click();
+    await page
+      .getByRole('link', { name: 'Open tailored version', exact: true })
+      .click();
+    await page.getByText('This saved version is approved.').waitFor();
+    await page
+      .getByRole('link', { name: '← Back to tailoring', exact: true })
+      .click();
+    const callsBeforeImport = received.length;
+    await page
+      .getByLabel('Job URL (optional)')
+      .fill('https://127.0.0.1/private');
+    await page.getByRole('button', { name: 'Import job description' }).click();
+    await page
+      .getByRole('alert')
+      .filter({ hasText: 'Paste the job description instead.' })
+      .waitFor();
+    await page.route('**/api/resumes/*/job-description', async (route) => {
+      assert.equal(
+        route.request().postDataJSON().url,
+        'https://jobs.example.test/software',
+      );
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          text: 'Seeking a software engineer to build reliable internal tools with TypeScript and React.',
+        }),
+      });
+    });
+    await page
+      .getByLabel('Job URL (optional)')
+      .fill('https://jobs.example.test/software');
+    await page.getByRole('button', { name: 'Import job description' }).click();
+    await page
+      .getByText('Job text imported. Review and edit it below before analysis.')
+      .waitFor();
+    assert.equal(
+      received.length,
+      callsBeforeImport,
+      'No model call before imported text approval',
+    );
+    await page.unroute('**/api/resumes/*/job-description');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({
+      path: join(output, 'tailoring-job-input-mobile.png'),
+      fullPage: true,
+    });
+    await page
+      .getByLabel(
+        'I removed names, contact information, and locations from this description.',
+      )
+      .check();
+    await page.getByRole('button', { name: 'Analyze and tailor' }).click();
+    await page.waitForURL('**/tailoring/analysis/*');
+    await page
+      .getByRole('link', { name: 'Review suggestions', exact: true })
+      .click();
+    await page.getByRole('heading', { name: 'Choose your changes' }).waitFor();
+    await page.getByRole('button', { name: 'Clear selection' }).click();
+    await page
+      .getByRole('button', { name: 'Continue without changes' })
+      .click();
+    await page.waitForURL('**/resume');
+    await page
+      .getByRole('heading', { name: 'Review your tailored version' })
+      .waitFor();
+    assert(
+      (
+        await page
+          .getByRole('article', { name: 'Tailored resume', exact: true })
+          .textContent()
+      ).includes('User corrected experience with internal tools.'),
+    );
+    await page
+      .getByLabel(
+        'I checked these changes against my experience and approve this version.',
+      )
+      .check();
+    await page
+      .getByRole('button', { name: 'Approve tailored version', exact: true })
+      .click();
+    await page.getByText('This saved version is approved.').waitFor();
+    assert.equal(
+      await client
+        .db(dbName)
+        .collection('variants')
+        .countDocuments({ status: 'reviewed' }),
+      2,
+    );
+
+    await page
       .getByRole('navigation', { name: 'Primary navigation' })
       .getByRole('link', { name: 'Resumes', exact: true })
       .click();
@@ -766,6 +931,24 @@ async function main() {
     );
     await page.reload();
     await page.getByRole('button', { name: 'Sign out' }).waitFor();
+    await page
+      .getByRole('button', { name: 'Delete resume', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Keep resume', exact: true })
+      .click();
+    await page
+      .getByRole('link', { name: 'Open and edit', exact: true })
+      .waitFor();
+    await page
+      .getByRole('button', { name: 'Delete resume', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Confirm delete resume', exact: true })
+      .click();
+    await page
+      .getByText('No resumes yet. Upload a resume to get started.')
+      .waitFor();
     await page
       .getByRole('link', { name: 'Upload resume', exact: true })
       .click();
@@ -801,10 +984,9 @@ async function main() {
         .countDocuments({ expiresAt: { $exists: true } }),
       0,
     );
-    assert.equal(
-      await db.collection('variants').countDocuments({ status: 'reviewed' }),
-      1,
-    );
+    assert.equal(await db.collection('variants').countDocuments(), 0);
+    assert.equal(await db.collection('resumes').countDocuments(), 0);
+    assert.equal(await db.collection('resumePii').countDocuments(), 0);
     console.log(
       `PASS: registration → upload → five-attempt review → editing → tailoring → PDF/DOCX; ${received.length} redacted calls; desktop/mobile and session checks. Artifacts: ${output}`,
     );

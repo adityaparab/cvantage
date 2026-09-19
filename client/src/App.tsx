@@ -1,6 +1,12 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 import WorkflowNotifications from './components/WorkflowNotifications';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiError, setCsrfToken } from './lib/api';
 import './App.css';
@@ -17,6 +23,13 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const main = useRef<HTMLElement>(null);
+  useEffect(() => {
+    main.current?.focus({ preventScroll: true });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [pathname]);
   useEffect(() => {
     let active = true;
     api<User>('/auth/me')
@@ -98,7 +111,7 @@ export default function App() {
           )}
         </div>
       </header>
-      <main>
+      <main ref={main} tabIndex={-1}>
         {!ready ? (
           <p role="status">Loading your workspace…</p>
         ) : user ? (

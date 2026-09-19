@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 0–20 are merged. Milestone 21 is in progress on `feat/resume-management-navigation`.
-**Next action:** split resume CRUD and tailoring navigation, then implement URL input and streamed analysis, then suggestion/application subroutes. Each milestone gets a dedicated branch and merged PR.
+**Current state:** milestones 0–23 are implemented and verified locally. PRs [#22](https://github.com/adityaparab/cvantage/pull/22), [#23](https://github.com/adityaparab/cvantage/pull/23) and [#24](https://github.com/adityaparab/cvantage/pull/24) record this restructuring and its merge status.
+**Next action:** evaluate configured live models separately when requested. Railway deployment remains deferred; no implementation steps for this restructuring remain.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -34,10 +34,9 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 18. Resume review with inline editing | Complete | 5, 10, 13 | Full build/client lint; 21 client tests; Chromium inline review/source/tailored edits, touch/keyboard and exports; light/dark mobile inspection |
 | 19. Delete resume fields and groups | Complete | 18 | Full build/client lint; 25 client tests; Chromium deletion/undo and persisted deletions through tailoring/export |
 | 20. Redaction review readiness | Complete | 16 | Full build/client lint; 32 client tests; Chromium first navigation without refetch, delayed readiness/progress, and full review-to-export journey |
-
 | 21. Resume management and primary navigation | Complete | 20 | Dedicated resume list/upload/edit/delete and separate tailoring entry |
 | 22. Job URL input and streamed analysis | Complete | 21 | Safe public job-page import and distinct resume/JD analysis streams |
-| 23. Tailoring suggestions and result routes | Planned | 22 | Select/apply suggestions and review updated resume under nested tailoring URLs |
+| 23. Tailoring suggestions and result routes | Complete | 22 | Select/apply suggestions and review updated resume under nested tailoring URLs |
 
 ### How to maintain progress
 
@@ -347,10 +346,10 @@ Completion: the command drops only the explicitly configured database, protects 
 
 ### 23. Tailoring suggestions and result routes
 
-- [ ] Add `/tailoring` resume selection and job input; keep analysis, suggestions and result screens beneath dedicated workflow/variant subroutes.
-- [ ] Present individual before/after suggestions with explicit selection/application, preserving source data and immutable facts.
-- [ ] Show the updated resume separately with inline review, approval and PDF/DOCX export; support reloads, direct links and active workflow notifications.
-- [ ] Verify complete text/URL-to-analysis-to-suggestions-to-result journeys, update docs/plan and merge its PR.
+- [x] Add `/tailoring` resume selection and job input; keep analysis, suggestions and result screens beneath dedicated workflow/variant subroutes.
+- [x] Present individual before/after suggestions with explicit selection/application, preserving source data and immutable facts.
+- [x] Show the updated resume separately with inline review, approval and PDF/DOCX export; support reloads, direct links and active workflow notifications.
+- [x] Verify complete text/URL-to-analysis-to-suggestions-to-result journeys, update docs/plan and merge its PR.
 
 ## Verification commands
 
@@ -410,17 +409,11 @@ yarn test:models
 | Local startup setup | `deploy/local/setup.cjs`, `setup`/`prestart` scripts and local/production startup documentation | Isolated Compose absent/stopped/running paths, stable container/data, failed-Docker startup abort, actual setup → client build → API HTTP 200; test resources cleaned up | [PR #16](https://github.com/adityaparab/cvantage/pull/16), `feat/local-startup-setup`, records the implementation and merge status; existing local database left running without restart |
 | Editable redaction review | Typed PII markers, local alias normalization, dedicated editable upload review with selection tools, approval-gated activity and notification routing | Full build/both linters; 45 unit, 41 integration, 15 client tests; Chromium flow and desktop/mobile inspection | [PR #17](https://github.com/adityaparab/cvantage/pull/17), `feat/editable-redaction-review`; next: explicit database wipe command |
 | Database wipe command | `scripts/wipe-database.cjs`, `yarn db:wipe`, exact-name confirmation and reset/reseeding documentation | 49 real database integration tests including 8 wipe cases; actual terminal cancellation/confirmation; sibling database preserved; fresh startup reseeds exact baseline | [PR #18](https://github.com/adityaparab/cvantage/pull/18), `feat/database-wipe`; live provider evaluation and Railway remain separate |
-
 | Inline resume review | Shared readable document layout, per-field drafts/check/cross, collapsed empty details, keyboard/touch controls and unfinished-edit guards | Full build/client lint; 21 client tests; complete synthetic Chromium workflow and desktop/mobile visual inspection | [PR #19](https://github.com/adityaparab/cvantage/pull/19), `feat/inline-resume-review`; merge status recorded on GitHub |
-
 | Delete resume fields/groups | Shared trash controls, single-deletion undo, required-field/edit protection, unchanged schemas | Full build/client lint; 25 client tests; Chromium proves field/group deletions survive approval, reload and tailoring; desktop/mobile inspection | [PR #20](https://github.com/adityaparab/cvantage/pull/20) merged as `a59beaf`; next: redaction loading fix |
-
 | Redaction review readiness | Route-persistent memory-only upload handoff; loading indicator, automatic readiness polling, timeout/retry, aborted obsolete requests and edit preservation | Full build/client lint; 32 client tests; Chromium verifies first visit without refetch or reload, delayed content and complete workflow; loading screenshot inspected | [PR #21](https://github.com/adityaparab/cvantage/pull/21), `feat/redaction-review-loading`; merge status recorded on GitHub |
-
-| Resume management and navigation | Dedicated resume library/upload/review/edit routes and separate tailoring selector; persistent primary navigation; owner/revision-safe cascading deletion and concurrent-write fencing | Full build, both linters, 45 unit, 51 integration and 33 client tests; complete synthetic Chromium journey | `feat/resume-management-navigation`; PR link and merge status recorded below |
+| Resume management and navigation | Dedicated resume library/upload/review/edit routes and separate tailoring selector; persistent primary navigation; owner/revision-safe cascading deletion and concurrent-write fencing | Full build, both linters, 45 unit, 51 integration and 33 client tests; complete synthetic Chromium journey | [PR #22](https://github.com/adityaparab/cvantage/pull/22), `feat/resume-management-navigation`, merged as `d5e107d` |
+| Job URL import and analysis | Bounded public HTTPS import, editable locally redacted text, separate streamed resume/job analysis and strict output contracts | Build/both linters, 67 unit, 52 integration and 35 client tests; Chromium completes 17 redacted model calls and exports | [PR #23](https://github.com/adityaparab/cvantage/pull/23), `feat/job-url-streamed-analysis`, merged as `26670ec`; next: suggestions and result screens |
+| Tailoring suggestions/result screens | Separate job/analysis/suggestions/result routes, selectable server-applied changes, retained proposals, inline approval/export and version history; notification/deep-link navigation | Full build/both linters, 70 unit, 53 integration, 38 client tests; Chromium verifies both input paths, live partial analysis, reload, subset/empty selection, exports, history and resource deletion; desktop/mobile inspected | [PR #24](https://github.com/adityaparab/cvantage/pull/24), `feat/tailoring-suggestions-pages`; linked PR records merge status |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
-
-Resume management PR: [#22](https://github.com/adityaparab/cvantage/pull/22); its linked status records the merge.
-
-| Job URL import and analysis | Bounded public HTTPS import, editable locally redacted text, separate streamed resume/job analysis and strict output contracts | Build/both linters, 67 unit, 52 integration and 35 client tests; Chromium completes 17 redacted model calls and exports | [PR #23](https://github.com/adityaparab/cvantage/pull/23), `feat/job-url-streamed-analysis`; next: suggestions and result screens |

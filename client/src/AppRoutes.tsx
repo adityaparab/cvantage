@@ -1,3 +1,6 @@
+import TailoringVersion from './pages/TailoringVersion';
+import TailoringSuggestions from './pages/TailoringSuggestions';
+import TailoringResult from './pages/TailoringResult';
 import {
   Navigate,
   Route,
@@ -71,6 +74,18 @@ export default function AppRoutes() {
         />
         <Route path="/resumes/:resumeId" element={<ResumeRoute />} />
         <Route path="/tailoring" element={<TailoringWorkspace />} />
+        <Route
+          path="/tailoring/analysis/:workflowId"
+          element={<ActivityRoute />}
+        />
+        <Route
+          path="/tailoring/resumes/:resumeId/versions/:variantId"
+          element={<TailoringVersion />}
+        >
+          <Route index element={<Navigate replace to="suggestions" />} />
+          <Route path="suggestions" element={<TailoringSuggestions />} />
+          <Route path="resume" element={<TailoringResult />} />
+        </Route>
         <Route
           path="/tailoring/activity/:workflowId"
           element={<ActivityRoute />}

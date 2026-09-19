@@ -1,3 +1,4 @@
+import { analysisPath, variantPath } from './tailoring';
 export interface StepRun {
   step: string;
   attempt: number;
@@ -49,6 +50,8 @@ export function activityHref(activity: Activity) {
     activity.status !== 'completed'
     ? `/resumes/uploads/${activity.id}/review`
     : activity.kind === 'tailoring'
-      ? `/tailoring/activity/${activity.id}`
+      ? activity.variantId
+        ? `${variantPath(activity.resumeId, activity.variantId)}/${activity.status === 'completed' ? 'resume' : 'suggestions'}`
+        : analysisPath(activity.id)
       : `/resumes/activity/${activity.id}`;
 }

@@ -549,17 +549,17 @@ input[type='checkbox'] {
 .resume-library h2 {
   overflow-wrap: anywhere;
 }
-.panel .inline-actions {
+.inline-actions {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
-.panel .inline-actions button {
+.inline-actions button {
   width: auto;
   margin: 0;
 }
-.panel .inline-actions .action-link {
+.inline-actions .action-link {
   margin: 0;
 }
 .deletion-confirmation {
@@ -584,4 +584,110 @@ input[type='checkbox'] {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+.tailoring-stages {
+  margin-bottom: 2.5rem;
+}
+.tailoring-stages ol {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+}
+.tailoring-stages li {
+  flex: 1 1 130px;
+}
+.tailoring-stages a,
+.tailoring-stages li > span {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 2px solid var(--border);
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+.tailoring-stages a.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+.tailoring-stages li span[aria-hidden] {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+}
+.job-input {
+  padding: 0;
+  border: 0;
+  margin: 0 0 1.5rem;
+  min-width: 0;
+}
+.job-input legend {
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.suggestions-list {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.suggestion .confirmation {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.suggestion-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+.suggestion-comparison > div {
+  min-width: 0;
+}
+.suggestion-comparison h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.suggestion-comparison p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.selection-summary {
+  border-top: 1px solid var(--border);
+  padding: 1rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.analysis-summary {
+  margin: 1.5rem 0;
+}
+.analysis-summary summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.tailoring-history {
+  margin-top: 3rem;
+}
+@media (max-width: 600px) {
+  .suggestion-comparison {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+.inline-actions .text-button {
+  width: auto;
+  margin: 0;
+}
+main:focus {
+  outline: none;
 }

@@ -148,6 +148,8 @@ function progress(item: Activity) {
     preparation_judge: 'Checking preparation',
     mapping_worker: 'Extracting content',
     mapping_judge: 'Reviewing content',
+    resume_analysis: 'Analyzing resume',
+    job_analysis: 'Analyzing job description',
     tailoring_worker: 'Tailoring wording',
     tailoring_judge: 'Reviewing wording',
   };

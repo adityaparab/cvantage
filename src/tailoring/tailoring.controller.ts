@@ -46,6 +46,14 @@ export class TailoringController {
   ) {
     return this.service.get(req.session.ownerId, resumeId, id);
   }
+  @Post('variants/:id/apply') apply(
+    @Req() req: AuthRequest,
+    @Param('resumeId') resumeId: string,
+    @Param('id') id: string,
+    @Body() input: unknown,
+  ) {
+    return this.service.apply(req.session.ownerId, resumeId, id, input);
+  }
   @Patch('variants/:id') edit(
     @Req() req: AuthRequest,
     @Param('resumeId') resumeId: string,
