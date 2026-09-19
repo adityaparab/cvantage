@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestones 0–23 are implemented and verified locally. PRs [#22](https://github.com/adityaparab/cvantage/pull/22), [#23](https://github.com/adityaparab/cvantage/pull/23) and [#24](https://github.com/adityaparab/cvantage/pull/24) record this restructuring and its merge status.
-**Next action:** evaluate configured live models separately when requested. Railway deployment remains deferred; no implementation steps for this restructuring remain.
+**Current state:** milestones 0–24 are implemented and verified locally. [PR #25](https://github.com/adityaparab/cvantage/pull/25) records profile-link redaction and its merge status.
+**Next action:** evaluate configured live models separately when requested. Railway deployment remains deferred.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -37,6 +37,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 21. Resume management and primary navigation | Complete | 20 | Dedicated resume list/upload/edit/delete and separate tailoring entry |
 | 22. Job URL input and streamed analysis | Complete | 21 | Safe public job-page import and distinct resume/JD analysis streams |
 | 23. Tailoring suggestions and result routes | Complete | 22 | Select/apply suggestions and review updated resume under nested tailoring URLs |
+| 24. Profile link redaction | Complete | 16, 23 | GitHub/LinkedIn URL detection, typed markers, review controls and privacy regressions |
 
 ### How to maintain progress
 
@@ -351,6 +352,12 @@ Completion: the command drops only the explicitly configured database, protects 
 - [x] Show the updated resume separately with inline review, approval and PDF/DOCX export; support reloads, direct links and active workflow notifications.
 - [x] Verify complete text/URL-to-analysis-to-suggestions-to-result journeys, update docs/plan and merge its PR.
 
+### 24. Profile link redaction
+
+- [x] Redact GitHub/LinkedIn URLs, bare links, subdomains and shortened links with canonical typed markers before model calls.
+- [x] Normalize equivalent explicit placeholders, expose manual redaction controls and explain detection on the review screen.
+- [x] Verify upload, edited-review, tailoring, candidate validation and streamed-output boundaries; update docs and merge the feature PR.
+
 ## Verification commands
 
 Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
@@ -415,5 +422,6 @@ yarn test:models
 | Resume management and navigation | Dedicated resume library/upload/review/edit routes and separate tailoring selector; persistent primary navigation; owner/revision-safe cascading deletion and concurrent-write fencing | Full build, both linters, 45 unit, 51 integration and 33 client tests; complete synthetic Chromium journey | [PR #22](https://github.com/adityaparab/cvantage/pull/22), `feat/resume-management-navigation`, merged as `d5e107d` |
 | Job URL import and analysis | Bounded public HTTPS import, editable locally redacted text, separate streamed resume/job analysis and strict output contracts | Build/both linters, 67 unit, 52 integration and 35 client tests; Chromium completes 17 redacted model calls and exports | [PR #23](https://github.com/adityaparab/cvantage/pull/23), `feat/job-url-streamed-analysis`, merged as `26670ec`; next: suggestions and result screens |
 | Tailoring suggestions/result screens | Separate job/analysis/suggestions/result routes, selectable server-applied changes, retained proposals, inline approval/export and version history; notification/deep-link navigation | Full build/both linters, 70 unit, 53 integration, 38 client tests; Chromium verifies both input paths, live partial analysis, reload, subset/empty selection, exports, history and resource deletion; desktop/mobile inspected | [PR #24](https://github.com/adityaparab/cvantage/pull/24), `feat/tailoring-suggestions-pages`; linked PR records merge status |
+| Profile link redaction | Shared local GitHub/LinkedIn URL matching, typed markers/aliases, prompt guidance and manual review controls | Full build/both linters; 88 unit, 54 integration and 40 client tests; Chromium confirms review-added URLs stay out of 21 model calls, mobile controls and exports | [PR #25](https://github.com/adityaparab/cvantage/pull/25), `feat/profile-link-redaction`; linked PR records merge status |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.

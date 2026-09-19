@@ -98,3 +98,14 @@ it('never stores schema output or streams it to activity subscribers', async () 
   );
   expect(run.received).toBeGreaterThan(0);
 });
+
+it('withholds split profile URLs and redacts decoded URL strings before streaming', () => {
+  expect(
+    safePreview('{"summary":"See https://github.com/synthetic-', pii),
+  ).toBe('');
+  const raw =
+    '{"summary":"See https:\\/\\/github.com\\/synthetic-user and https://www.linked\\u0069n.com/in/synthetic-user",';
+  const result = safePreview(raw, pii);
+  expect(result).toBe('See PII_GITHUB and PII_LINKEDIN');
+  expect(result).not.toMatch(/synthetic-user|github\.com|linkedin\.com/i);
+});

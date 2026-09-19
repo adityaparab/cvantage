@@ -22,3 +22,15 @@ it('keeps marker normalization separate from PII detection', () => {
     'PII_EMAIL PII_PHONE',
   );
 });
+
+it('normalizes explicit GitHub and LinkedIn URL placeholders locally', () => {
+  const text =
+    '[GitHub URL removed] <Linked In profile hidden> GITHUB_REDACTED {linkedin link} PII_GITHUB PII_LINKEDIN';
+  const expected =
+    'PII_GITHUB PII_LINKEDIN PII_GITHUB PII_LINKEDIN PII_GITHUB PII_LINKEDIN';
+  expect(normalizeRedactionMarkers(text)).toBe(expected);
+  expect(normalizeRedactionMarkers(expected)).toBe(expected);
+  expect(
+    normalizeRedactionMarkers('GitHub Actions and LinkedIn experience'),
+  ).toBe('GitHub Actions and LinkedIn experience');
+});
