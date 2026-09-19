@@ -8,6 +8,8 @@ Copy `.env.example` to `.env`, populate credentials/model identifiers and a rand
 
 The recommended local setup is [Docker Compose](../deploy/local/README.md): run `yarn db:up` from the repository root. It automatically initializes a replica set, waits for a writable primary, and preserves data in named volumes. `.env.example` points to this instance on port 27018. Local deployment configuration lives under `deploy/local/`; future Railway configuration is separate.
 
+`yarn setup` restarts a running local MongoDB container or starts it if stopped/absent, then waits for health. `yarn start` runs setup before its client build and server launch, aborting on any setup failure. `yarn dev` and `yarn start:prod` do not run setup automatically; production connects to separately provisioned infrastructure.
+
 ### Alternative: installed MongoDB server
 
 Use a local MongoDB replica set for transactions. An existing standalone `mongod` does not become a replica set just because the URI contains `replicaSet=cvantage`. The server must start with `--replSet cvantage`, then be initialized.

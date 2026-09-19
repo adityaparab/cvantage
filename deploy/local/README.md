@@ -5,8 +5,12 @@ Requires Docker with Compose **2.30+** (or Compose 5). The setup uses a [post-st
 From the repository root:
 
 ```sh
-yarn db:up
+yarn setup
 ```
+
+`yarn setup` checks the `mongodb` service in this Compose project. If it is running, setup stops it and starts it again; if stopped or absent, setup only starts it. It waits for a healthy replica set and preserves the database volumes. A Docker or readiness failure returns a nonzero exit code.
+
+`yarn start` runs setup automatically, then builds the client and starts NestJS. `yarn dev` and `yarn start:prod` do not run setup automatically; use `yarn setup` first when those commands need the local database. Production/Railway startup remains independent of Docker Compose.
 
 This starts the official MongoDB 8.0.32 image as a single-member replica set named `cvantage`, bound on the host to **127.0.0.1:27018**. It starts with its own empty database; an existing MongoDB on port 27017 is untouched. The container advertises `mongodb:27017` to its Compose network. Set only the following database settings in the application's root `.env`, preserving your other settings:
 
@@ -21,8 +25,9 @@ The host application needs `directConnection=true` because Docker's `mongodb` ho
 
 ```sh
 yarn db:logs    # Follow MongoDB logs
+yarn setup     # Restart running MongoDB, or start it if stopped/absent; wait for health
 yarn db:down    # Stop/remove containers and network; retain database volumes
-yarn db:up      # Recreate containers and reuse the same data
+yarn db:up      # Ensure MongoDB is running without deliberately restarting it
 ```
 
 Named Docker volumes preserve data across restarts and container recreation. Initialization is idempotent: it creates a replica-set configuration only on a fresh volume and rejects a conflicting existing configuration. The Compose project name is `cvantage-local`; it has its own network and volumes. There are no host data-directory mounts. Do not add `--volumes` to `down` unless you intend to delete this local database.

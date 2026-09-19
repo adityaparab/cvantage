@@ -14,6 +14,8 @@ yarn db:up
 yarn dev
 ```
 
+For a single local server, run `yarn start`. Its prestart hook runs `yarn setup`, which restarts the local MongoDB container if running or starts it if stopped/absent, waits for health, then builds the client. Run `yarn setup` directly whenever you need that database preparation. Existing database volumes are preserved; setup failures prevent the application from starting.
+
 Open `http://localhost:5173`. [Local deployment](deploy/local/README.md) provisions an isolated MongoDB replica set on port 27018 with persistent Docker volumes. `yarn db:down` stops it and preserves its data. Existing `.env` files must use the URI documented there. See [development setup](docs/development.md) for configuration, parser dependencies and recovery behavior, and [deployment boundaries](deploy/README.md) for the separate future Railway setup. To run the compiled application:
 
 ```sh
@@ -22,6 +24,8 @@ yarn start:prod
 ```
 
 The backend serves the client and API at `http://localhost:3000`. API routes use `/api`; unknown API routes remain JSON 404s.
+
+`yarn start:prod` does not run Docker setup, keeping deployment startup independent of local infrastructure.
 
 ## Workflow and privacy
 
