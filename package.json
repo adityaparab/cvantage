@@ -6,6 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "setup": "node deploy/local/setup.cjs",
     "db:up": "docker compose --env-file deploy/local/compose.env -f deploy/local/compose.yaml up -d --wait --wait-timeout 120",
     "db:down": "docker compose --env-file deploy/local/compose.env -f deploy/local/compose.yaml down",
     "db:logs": "docker compose --env-file deploy/local/compose.env -f deploy/local/compose.yaml logs -f mongodb",
@@ -17,7 +18,7 @@
     "build:server": "nest build",
     "build:client": "yarn --cwd client build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "prestart": "yarn build:client",
+    "prestart": "yarn setup && yarn build:client",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",

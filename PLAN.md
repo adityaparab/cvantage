@@ -8,8 +8,8 @@ Implement the upload → parse → user review → tailor → download flow defi
 
 ## Status and next action
 
-**Current state:** milestone 14 is implemented and verified: schema modification has one worker–judge pass; mapping retains its five-attempt loop. Schemas stay internal; parsed resumes require user approval.
-**Next action:** live provider quality evaluation and Railway deployment remain separate pending work. [PR #15](https://github.com/adityaparab/cvantage/pull/15) records milestone 14 and its merge status.
+**Current state:** milestone 15 is implemented and verified: `yarn start` prepares local MongoDB with `yarn setup` before building the client and starting the server.
+**Next action:** live provider evaluation and Railway remain separate pending work. [PR #16](https://github.com/adityaparab/cvantage/pull/16) records milestone 15 and its merge status.
 
 | Milestone | Status | Depends on | Completion evidence |
 | --- | --- | --- | --- |
@@ -28,6 +28,7 @@ Implement the upload → parse → user review → tailor → download flow defi
 | 12. Streamed workflow activity and notifications | Complete | 10–11 | Full build/both linters; 35 unit, 30 integration, 9 client tests; Chromium streaming/retry/loop/reload/notification/approval/export journey |
 | 13. Seeded additive resume schema | Complete | 4, 10, 12 | Full build/both linters; 40 unit, 36 integration, 10 client tests; Chromium extraction/edit/tailor/export using the supplied layout |
 | 14. Single-pass schema modification | Complete | 13 | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and five mapping attempts |
+| 15. Local startup setup command | Complete | 9 | Real isolated Compose absent/stopped/running checks; data preserved; setup failure blocks startup; full yarn start reaches HTTP 200 |
 
 ### How to maintain progress
 
@@ -279,6 +280,14 @@ Completion: a fresh startup seeds the supplied file; resumes can add only approv
 
 Completion: no schema correction loop or replay after interruptions/conflicts. Mapping keeps its existing budget and user approval. [PR #15](https://github.com/adityaparab/cvantage/pull/15) records the dedicated feature change and merge status.
 
+### 15. Local startup setup command
+
+- [x] Add `yarn setup` under `deploy/local`: stop a running MongoDB service, start stopped/absent services, wait for health, preserve data and propagate failures.
+- [x] Run setup from `prestart` before the client build; keep production startup independent of local Compose.
+- [x] Verify lifecycle behavior against an isolated Compose project, startup ordering/failure handling and data preservation; update documentation. The actual `yarn start` sequence reached API HTTP 200. Script syntax, formatting and diff checks pass.
+
+Completion: the local setup command preserves volumes and gates application startup on database health. Test resources were removed; the existing user database was not restarted. [PR #16](https://github.com/adityaparab/cvantage/pull/16) records the dedicated feature change and merge status.
+
 ## Verification commands
 
 Use the existing scripts as the baseline; add client behavior/browser test scripts when their setup is introduced:
@@ -334,5 +343,6 @@ yarn test:models
 | Streamed workflow activity | `src/activity`, streaming LiteLLM adapter, protected progress persistence, activity routes, upload/tailoring redirects and notification dropdown | Full build/both linters; 35 unit, 30 integration, 9 client tests; full Chromium journey with 15 redacted requests, retry/loop/reload checks and inspected mobile/dark dropdown | [PR #13](https://github.com/adityaparab/cvantage/pull/13), `feat/workflow-activity`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Seeded schema extraction | Supplied `schema/schema.json`, startup seed transaction, additive/evidence-based worker contract, baseline validation/editor/export support and historical compatibility | Full build/both linters; 40 unit, 36 integration, 10 client tests; complete Chromium journey and unchanged-schema version reuse | [PR #14](https://github.com/adityaparab/cvantage/pull/14), `feat/seeded-resume-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
 | Single-pass schema modification | Stage-specific limits, terminal schema rejection/conflicts, restart protection and corrected activity labels | Full build/both linters; 40 unit, 41 integration, 11 client tests; Chromium verifies one preparation pass and full resume journey | [PR #15](https://github.com/adityaparab/cvantage/pull/15), `feat/single-pass-schema`, records the implementation and merge status; live provider evaluation and Railway remain separate |
+| Local startup setup | `deploy/local/setup.cjs`, `setup`/`prestart` scripts and local/production startup documentation | Isolated Compose absent/stopped/running paths, stable container/data, failed-Docker startup abort, actual setup → client build → API HTTP 200; test resources cleaned up | [PR #16](https://github.com/adityaparab/cvantage/pull/16), `feat/local-startup-setup`, records the implementation and merge status; existing local database left running without restart |
 
 For future entries, record: milestone/task, concrete changed paths, checks and results (including skipped checks), decisions or blockers, and the next unfinished action. Keep entries concise and evidence-based.
