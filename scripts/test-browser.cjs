@@ -218,6 +218,9 @@ async function main() {
       .getByRole('button', { name: 'Create account', exact: true })
       .click();
     await page
+      .getByRole('link', { name: 'Upload resume', exact: true })
+      .click();
+    await page
       .getByLabel('Full name', { exact: true })
       .fill('Synthetic Applicant');
     await page.getByLabel('Location', { exact: true }).fill('Warsaw, Poland');
@@ -351,7 +354,7 @@ async function main() {
       .click();
     await page.waitForURL('**/activity/*');
     const parsingUrl = page.url();
-    await page.getByRole('link', { name: '← Back to workspace' }).click();
+    await page.getByRole('link', { name: '← Back to resumes' }).click();
     await page.getByRole('button', { name: /Workflow notifications/ }).click();
     await page
       .getByRole('region', { name: 'Active workflows' })
@@ -608,7 +611,7 @@ async function main() {
       )
       .check();
     await page.getByRole('button', { name: 'Approve parsed resume' }).click();
-    await page.getByRole('button', { name: /Open and edit/ }).waitFor();
+    await page.getByRole('link', { name: /Open and edit/ }).waitFor();
     await page.goto(parsingUrl);
     await page.getByRole('link', { name: 'Open saved resume' }).click();
     const editor = page.locator('form').filter({
@@ -634,11 +637,6 @@ async function main() {
     );
     assert(
       await page
-        .getByRole('button', { name: 'Create tailored version' })
-        .isDisabled(),
-    );
-    assert(
-      await page
         .getByRole('button', { name: 'Download PDF', exact: true })
         .isDisabled(),
     );
@@ -652,6 +650,13 @@ async function main() {
       .getByRole('button', { name: 'Save resume changes', exact: true })
       .click();
     await page.getByText('Changes saved.', { exact: true }).waitFor();
+    assert.equal(await page.getByLabel('Job description').count(), 0);
+    const savedResumeId = new URL(page.url()).pathname.split('/').at(-1);
+    await page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('link', { name: 'Tailoring', exact: true })
+      .click();
+    await page.getByLabel('Source resume').selectOption(savedResumeId);
     await page
       .getByLabel('Job description')
       .fill(
@@ -725,7 +730,10 @@ async function main() {
     await exports.getByRole('button', { name: 'Preview PDF' }).click();
     await page.getByTitle('Resume PDF preview').waitFor();
     await page.getByRole('button', { name: 'Close preview' }).click();
-    await page.getByRole('button', { name: '← Back to workspace' }).click();
+    await page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('link', { name: 'Resumes', exact: true })
+      .click();
     await page.screenshot({
       path: join(output, 'desktop.png'),
       fullPage: true,
@@ -740,6 +748,9 @@ async function main() {
     );
     await page.reload();
     await page.getByRole('button', { name: 'Sign out' }).waitFor();
+    await page
+      .getByRole('link', { name: 'Upload resume', exact: true })
+      .click();
     await page.getByLabel('Full name', { exact: true }).focus();
     await page.keyboard.press('Tab');
     assert(

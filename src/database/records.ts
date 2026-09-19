@@ -2,6 +2,7 @@ import type { StepRun } from '../activity/activity.types';
 import type { ResumeData, ResumeSchema } from '../contracts/resume-schema';
 import type { JobStatus, JudgeResult, Stage } from '../contracts/workflow';
 export interface ResumeRecord {
+  workflowWrites?: number;
   workflowId?: string;
   _id: string;
   ownerId: string;

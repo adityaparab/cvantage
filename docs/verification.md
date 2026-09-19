@@ -64,3 +64,7 @@ Full build/client lint and 25 client tests pass. New tests cover scalar/object/a
 ## Redaction review readiness — 2026-09-19
 
 Full build/client lint and 32 client tests pass. Regression coverage includes immediate upload content, route remount handoff and clearing on exit, empty/missing text progressing to ready, request failure/retry, a 30-second timeout, aborted/unmounted requests, ignored late responses and preservation of manual edits. The Chromium journey now checks the first post-upload visit before any reload and confirms no redundant job read. A controlled delayed response exercises the progress indicator and automatic text refresh on the same page; all parsing, deletion, tailoring and export checks still pass. The loading screenshot was inspected in `/tmp/cvantage-redaction-loading-browser`. Tests use synthetic data, an isolated MongoDB replica set and a local scripted model endpoint; backend unit/integration suites were not rerun for these client changes. Temporary test services were removed.
+
+## Resume sections — 2026-09-19
+
+Full build, both linters, 45 backend unit, 51 database/HTTP and 33 client tests pass. The synthetic Chromium journey verifies primary navigation, dedicated upload/review routes, source editing without tailoring controls, the tailoring selector and both exports. Deletion coverage includes confirmation, ownership, CSRF, stale revisions, related-record cleanup, sibling preservation and generation racing with deletion. Browser artifacts: `/tmp/cvantage-sections-browser`.

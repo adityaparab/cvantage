@@ -1,5 +1,4 @@
 import ExportControls from './ExportControls'
-import TailoringPanel from './TailoringPanel'
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { ResumeFields } from './ResumeFields'
@@ -97,7 +96,7 @@ export default function ResumeEditor({
   return (
     <section className="panel">
       <button className="text-button" onClick={onClose}>
-        ← Back to workspace
+        ← Back to resumes
       </button>
       <h2>Your resume</h2>
       <p className="muted">
@@ -159,13 +158,6 @@ export default function ResumeEditor({
           <ExportControls
             resumeId={resume._id}
             disabled={
-              editing || JSON.stringify(data) !== JSON.stringify(resume.data)
-            }
-          />
-          <TailoringPanel
-            resume={resume}
-            schema={schema}
-            unsaved={
               editing || JSON.stringify(data) !== JSON.stringify(resume.data)
             }
           />

@@ -28,7 +28,7 @@ export default function PrivacyReview({
   useLayoutEffect(() => {
     if (!job) return;
     if (job.piiConfirmed) {
-      navigate(`/activity/${id}`, { replace: true });
+      navigate(`/resumes/activity/${id}`, { replace: true });
       return;
     }
     setSource(job.source);
@@ -59,7 +59,7 @@ export default function PrivacyReview({
           confirmed: true,
         }),
       });
-      navigate(`/activity/${id}`, { replace: true });
+      navigate(`/resumes/activity/${id}`, { replace: true });
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : 'Could not confirm review',
@@ -73,7 +73,7 @@ export default function PrivacyReview({
     setError('');
     try {
       await api(`/parsing-jobs/${id}/cancel`, { method: 'POST', body: '{}' });
-      navigate('/');
+      navigate('/resumes');
     } catch {
       setError('Could not delete this upload. Try again.');
     } finally {
@@ -82,8 +82,8 @@ export default function PrivacyReview({
   }
   return (
     <div className="upload-review-page">
-      <Link className="text-button" to="/">
-        ← Back to workspace
+      <Link className="text-button" to="/resumes">
+        ← Back to resumes
       </Link>
       <p className="eyebrow">UPLOAD · YOUR REVIEW REQUIRED</p>
       <h1>Review your redacted resume</h1>

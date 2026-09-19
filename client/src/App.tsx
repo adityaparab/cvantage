@@ -1,24 +1,14 @@
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import WorkflowActivity from './components/WorkflowActivity';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import WorkflowNotifications from './components/WorkflowNotifications';
-import ResumeEditor from './components/ResumeEditor';
-import UploadResume from './components/UploadResume';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiError, setCsrfToken } from './lib/api';
 import './App.css';
 import ThemeSelect from './components/ThemeSelect';
-import PrivacyReview from './components/PrivacyReview';
-import { usePreparedUpload } from './lib/uploadReviewContext';
 interface User {
   id: string;
   email: string;
   csrfToken: string;
-}
-interface Resume {
-  _id: string;
-  schemaVersion: number;
-  updatedAt: string;
 }
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -26,16 +16,7 @@ export default function App() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const { workflowId, uploadId, resumeId: selected } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const refreshResumes = useCallback(() => {
-    api<Resume[]>('/resumes')
-      .then(setResumes)
-      .catch(() => setError('Could not refresh resumes.'));
-  }, []);
-  const [resumes, setResumes] = useState<Resume[]>([]);
-  const { preparedUpload, setPreparedUpload } = usePreparedUpload();
   useEffect(() => {
     let active = true;
     api<User>('/auth/me')
@@ -56,20 +37,6 @@ export default function App() {
       active = false;
     };
   }, []);
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    api<Resume[]>('/resumes')
-      .then((value) => {
-        if (active) setResumes(value);
-      })
-      .catch(() => {
-        if (active) setError('Could not load resumes. Refresh to retry.');
-      });
-    return () => {
-      active = false;
-    };
-  }, [user, location.pathname]);
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -97,7 +64,6 @@ export default function App() {
     try {
       await api('/auth/logout', { method: 'POST', body: '{}' });
       setUser(null);
-      setResumes([]);
       navigate('/');
       setCsrfToken('');
     } catch {
@@ -112,6 +78,12 @@ export default function App() {
         <Link to="/" className="brand">
           CVantage<span>Make your experience count.</span>
         </Link>
+        {user && (
+          <nav className="primary-navigation" aria-label="Primary navigation">
+            <NavLink to="/resumes">Resumes</NavLink>
+            <NavLink to="/tailoring">Tailoring</NavLink>
+          </nav>
+        )}
         <div className="header-actions">
           <ThemeSelect />
           {user && <WorkflowNotifications />}
@@ -130,65 +102,7 @@ export default function App() {
         {!ready ? (
           <p role="status">Loading your workspace…</p>
         ) : user ? (
-          uploadId ? (
-            <PrivacyReview
-              key={uploadId}
-              id={uploadId}
-              initial={preparedUpload}
-            />
-          ) : workflowId ? (
-            <WorkflowActivity
-              key={workflowId}
-              id={workflowId}
-              onComplete={refreshResumes}
-            />
-          ) : (
-            <>
-              <p className="eyebrow">YOUR WORKSPACE</p>
-              <h1>Your next chapter starts here.</h1>
-              <p className="muted">Signed in as {user.email}</p>
-              {selected ? (
-                <ResumeEditor
-                  key={selected}
-                  id={selected}
-                  onClose={() => {
-                    navigate('/');
-                    refreshResumes();
-                  }}
-                />
-              ) : (
-                <UploadResume
-                  onUploaded={(id, prepared) => {
-                    setPreparedUpload(prepared);
-                    navigate(`/uploads/${id}/review`);
-                  }}
-                />
-              )}
-              <section className="panel">
-                <h2>Your resumes</h2>
-                {resumes.length ? (
-                  <ul>
-                    {resumes.map((resume) => (
-                      <li key={resume._id}>
-                        <button
-                          className="text-button"
-                          onClick={() => navigate(`/resumes/${resume._id}`)}
-                        >
-                          Resume ·{' '}
-                          {new Date(resume.updatedAt).toLocaleDateString()} ·
-                          Open and edit
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="muted">
-                    No resumes yet. Your saved resumes will appear here.
-                  </p>
-                )}
-              </section>
-            </>
-          )
+          <Outlet />
         ) : (
           <section className="auth-layout">
             <div>
