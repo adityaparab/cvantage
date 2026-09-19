@@ -9,6 +9,8 @@ const markers = [
   ['PII_EMAIL', 'email'],
   ['PII_PHONE', 'phone number'],
   ['PII_LOCATION', 'location or address'],
+  ['PII_GITHUB', 'GitHub link'],
+  ['PII_LINKEDIN', 'LinkedIn link'],
 ];
 export default function PrivacyReview({
   id,
@@ -95,8 +97,9 @@ export default function PrivacyReview({
         <h2>Check for personal details</h2>
         <p>
           We replace your supplied name, location and contact details, plus
-          detected emails and phone numbers. Edit any identifying details we
-          missed. Contact details stay separate for export.
+          detected emails, phone numbers, GitHub links and LinkedIn links. Edit
+          any identifying details we missed. Supplied contact details stay
+          separate for export; detected profile links are removed from the text.
         </p>
         {job ? (
           <form

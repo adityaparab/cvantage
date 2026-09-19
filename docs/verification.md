@@ -6,9 +6,9 @@ The implemented workflow was verified locally with synthetic data. These checks 
 | --- | --- |
 | Backend and frontend builds | Pass |
 | Server ESLint and client Oxlint | Pass |
-| Backend unit tests | 70 pass |
-| MongoDB/HTTP/graph integration tests | 53 pass against an isolated local replica set |
-| React behavior tests | 38 pass |
+| Backend unit tests | 88 pass |
+| MongoDB/HTTP/graph integration tests | 54 pass against an isolated local replica set |
+| React behavior tests | 40 pass |
 | Real Chromium UI journey | Pass: register, upload DOCX, redact, five-attempt mapping review, approve, edit, tailor, approve variant, download PDF/DOCX, preview PDF, restore session, logout |
 | Browser workflow privacy | 21 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
 | Navigation/accessibility | Upload opens editable redaction review; approval redirects to activity; notification links, Escape/focus, reload recovery, theme persistence/system changes, keyboard field navigation and 390 px mobile layout checked |
@@ -78,3 +78,7 @@ Build/both linters, 67 unit, 52 integration and 35 client tests pass. URL tests 
 Full build, both linters, 70 backend unit tests, 53 database/HTTP integration tests and 38 client tests pass. Selection tests cover subsets, no changes, historical schemas, unknown/duplicate/factual paths, stale revisions, ownership, retained proposals and unchanged source resumes. Client tests verify selected-ID payloads, failed-save behavior and notification routes.
 
 The Chromium journey now covers pasted descriptions and imported text, actual rejection of private URLs, mandatory privacy review, partial streamed resume/job output while each step is active, reload recovery, suggestions and results on separate routes, subset/no-change application, persisted results, approval, both downloads, saved analysis summaries, previous-version links and confirmed/cancelled resource deletion. It captures 21 redacted model requests. Desktop/mobile suggestions and result/input screenshots were inspected in `/tmp/cvantage-tailoring-browser`; browser checks assert no horizontal mobile overflow. External job sites and live providers remain untested. Temporary test services are cleaned up after verification; existing application services are untouched.
+
+## GitHub/LinkedIn redaction — 2026-09-19
+
+Full build/both linters, 88 backend unit tests, 54 database/HTTP integration tests and 40 client tests pass. Cases cover full/bare links, mixed case, regional subdomains, GitHub Pages, LinkedIn short URLs, queries/fragments, punctuation, unrelated domains, overlapping supplied values, recursive PII detection, marker aliases and escaped/split streamed strings. A real synthetic DOCX upload verifies profile URLs are redacted before the first response or source persistence; edited-review and tailoring tests inspect model inputs. The Chromium journey verifies review-added profile URLs never reach any of 21 model requests, both manual controls fit the mobile layout, and parsing/tailoring/exports still complete. Screenshot inspected in `/tmp/cvantage-profile-browser`. Only isolated test services and synthetic model responses were used. Existing saved records were not migrated; model-boundary checks reject remaining profile URLs. Detected profile URLs are removed from text, without automatic export restoration.

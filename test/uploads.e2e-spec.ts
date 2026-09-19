@@ -1,3 +1,4 @@
+import { Document, Packer, Paragraph } from 'docx';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import type { App } from 'supertest/types';
@@ -81,7 +82,7 @@ describe('resume uploads', () => {
       .expect(400);
     const edited =
       result.source +
-      '\n[NAME REMOVED] [email removed] PHONE_REDACTED {address hidden} applicant@example.test';
+      '\n[NAME REMOVED] [email removed] PHONE_REDACTED {address hidden} applicant@example.test github.com/edited-private-user linkedin.com/in/edited-private-user [GitHub URL removed] [LinkedIn link removed]';
     await agent
       .post(`/api/parsing-jobs/${result.jobId}/prepare`)
       .set('X-CSRF-Token', csrfToken)
@@ -119,7 +120,7 @@ describe('resume uploads', () => {
     expect(generate).toHaveBeenCalledTimes(2);
     expect(generate.mock.calls[0][2]).toMatchObject({ source: normalized });
     expect(JSON.stringify(generate.mock.calls)).not.toMatch(
-      /Synthetic Applicant|applicant@example.test|555 123 4567|Warsaw, Poland/,
+      /Synthetic Applicant|applicant@example.test|555 123 4567|Warsaw, Poland|edited-private-user|github\.com|linkedin\.com/,
     );
     expect(job).not.toHaveProperty('file');
     expect(job).not.toHaveProperty('buffer');
@@ -142,5 +143,59 @@ describe('resume uploads', () => {
         .collection('resumePii')
         .countDocuments({ resumeId: result.resumeId }),
     ).toBe(0);
+  });
+  it('redacts profile links on first upload before storing or displaying review text', async () => {
+    const agent = request.agent(app.getHttpServer());
+    const account = await agent
+      .post('/api/auth/register')
+      .set('X-Requested-With', 'CVantage')
+      .send({
+        email: 'profile-uploader@example.test',
+        password: 'synthetic-password-123',
+      })
+      .expect(201);
+    const { csrfToken } = z
+      .object({ csrfToken: z.string() })
+      .parse(account.body);
+    const document = await Packer.toBuffer(
+      new Document({
+        sections: [
+          {
+            children: [
+              new Paragraph('Software engineer using GitHub Actions.'),
+              new Paragraph('https://github.com/upload-private-user'),
+              new Paragraph(
+                'www.linkedin.com/in/upload-private-user?trk=profile',
+              ),
+            ],
+          },
+        ],
+      }),
+    );
+    const response = await agent
+      .post('/api/resumes/upload')
+      .set('X-CSRF-Token', csrfToken)
+      .field('pii', JSON.stringify(pii))
+      .attach('file', document, 'synthetic-profile-resume.docx')
+      .expect(201);
+    const result = z
+      .object({ jobId: z.string(), source: z.string() })
+      .parse(response.body);
+    expect(result.source).toContain('PII_GITHUB');
+    expect(result.source).toContain('PII_LINKEDIN');
+    expect(result.source).toContain('GitHub Actions');
+    expect(result.source).not.toMatch(
+      /upload-private-user|github\.com|linkedin\.com/,
+    );
+    const stored = await app
+      .get(DatabaseService)
+      .db.collection<{ _id: string; source: string }>('parseJobs')
+      .findOne({ _id: result.jobId });
+    expect(stored?.source).toBe(result.source);
+    await agent
+      .post(`/api/parsing-jobs/${result.jobId}/cancel`)
+      .set('X-CSRF-Token', csrfToken)
+      .send({})
+      .expect(201);
   });
 });

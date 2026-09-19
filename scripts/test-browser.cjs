@@ -332,7 +332,9 @@ async function main() {
     await page.keyboard.press('Escape');
     const reviewText = page.getByLabel('Redacted resume text');
     await reviewText.fill(
-      'Missed Person\n' + redacted + '\nExtra contact [EMAIL REMOVED]',
+      'Missed Person\n' +
+        redacted +
+        '\nExtra contact [EMAIL REMOVED] github.com/browser-private-profile linkedin.com/in/browser-private-profile',
     );
     await reviewText.press('Control+Home');
     await reviewText.press('Shift+End');
@@ -964,11 +966,13 @@ async function main() {
     await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
     assert.deepEqual(errors, []);
     assert(
-      !/Synthetic Applicant|applicant@example\.test|Warsaw, Poland|555 123 4567/.test(
+      !/Synthetic Applicant|applicant@example\.test|Warsaw, Poland|555 123 4567|browser-private-profile|github\.com|linkedin\.com/.test(
         JSON.stringify(received),
       ),
       'No known PII in model calls',
     );
+    assert(JSON.stringify(received).includes('PII_GITHUB'));
+    assert(JSON.stringify(received).includes('PII_LINKEDIN'));
     assert(
       !logs.includes('synthetic-browser-key') &&
         !logs.includes('Synthetic Applicant') &&

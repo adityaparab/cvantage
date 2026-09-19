@@ -313,3 +313,32 @@ it('hands off text across route remounts and clears it when leaving review', asy
   expect(field.value).toBe('PII_NAME stored source');
   expect(api).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  ['GitHub', 'PII_GITHUB'],
+  ['LinkedIn', 'PII_LINKEDIN'],
+])(
+  'offers manual %s link redaction and explains detection',
+  async (service, marker) => {
+    vi.mocked(api).mockResolvedValueOnce({
+      source: 'unusual profile link\nEngineer',
+      revision: 0,
+    });
+    renderReview();
+    const field = await screen.findByLabelText<HTMLTextAreaElement>(
+      'Redacted resume text',
+    );
+    expect(screen.getByText(/GitHub links and LinkedIn links/)).toBeTruthy();
+    field.setSelectionRange(0, 'unusual profile link'.length);
+    fireEvent.select(field);
+    fireEvent.click(
+      screen.getByRole('button', { name: `Redact ${service} link` }),
+    );
+    expect(field.value).toBe(`${marker}\nEngineer`);
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', {
+        name: 'Approve redaction and start parsing',
+      }).disabled,
+    ).toBe(true);
+  },
+);
