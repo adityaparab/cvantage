@@ -9,6 +9,7 @@ import { DatabaseService } from '../src/database/database.service';
 import { ResumeRepository } from '../src/database/resume.repository';
 import { TailoringService } from '../src/tailoring/tailoring.service';
 import { ModelGateway } from '../src/adapters/ports';
+import type { Variant } from '../src/tailoring/tailoring.service';
 import type { ResumeRecord } from '../src/database/records';
 const auth = z.object({ id: z.string(), csrfToken: z.string() });
 describe('resume resource deletion', () => {
@@ -190,5 +191,72 @@ describe('resume resource deletion', () => {
           .countDocuments({ resumeId: resume._id }),
       ).toBe(0);
     }
+  });
+  it('persists a subset of suggestions, preserves proposals and rejects stale/foreign selections', async () => {
+    const resume = await seed(randomUUID());
+    const source = {
+      basics: { summary: 'Engineer building tools' },
+      work: [{ name: 'Example', highlights: ['Built internal tools'] }],
+    };
+    await database.db
+      .collection<ResumeRecord>('resumes')
+      .updateOne({ _id: resume._id }, { $set: { data: source } });
+    const proposal = {
+      ...source,
+      basics: { summary: 'Software engineer focused on tools' },
+      work: [{ name: 'Example', highlights: ['Delivered internal tools'] }],
+    };
+    const id = randomUUID();
+    await database.db.collection<Variant>('variants').insertOne({
+      _id: id,
+      ownerId: resume.ownerId,
+      resumeId: resume._id,
+      sourceRevision: 0,
+      schemaVersion: 1,
+      sourceData: source,
+      data: proposal,
+      revision: 0,
+      status: 'review_required',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const tailoring = app.get(TailoringService);
+    await expect(
+      tailoring.apply('another-owner', resume._id, id, {
+        revision: 0,
+        suggestionIds: [],
+      }),
+    ).rejects.toThrow();
+    await expect(
+      tailoring.apply(resume.ownerId, resume._id, id, {
+        revision: 0,
+        suggestionIds: ['/work/0/name'],
+      }),
+    ).rejects.toThrow('valid suggestions');
+    const selected = await tailoring.apply(resume.ownerId, resume._id, id, {
+      revision: 0,
+      suggestionIds: ['/basics/summary'],
+    });
+    expect(selected.data).toEqual({ ...source, basics: proposal.basics });
+    expect(selected.proposalData).toEqual(proposal);
+    expect(
+      (await tailoring.get(resume.ownerId, resume._id, id)).suggestions,
+    ).toHaveLength(2);
+    await expect(
+      tailoring.apply(resume.ownerId, resume._id, id, {
+        revision: 0,
+        suggestionIds: [],
+      }),
+    ).rejects.toThrow('changed');
+    const cleared = await tailoring.apply(resume.ownerId, resume._id, id, {
+      revision: 1,
+      suggestionIds: [],
+    });
+    expect(cleared.data).toEqual(source);
+    expect(cleared.appliedSuggestionIds).toEqual([]);
+    expect(cleared.status).toBe('review_required');
+    expect(
+      (await app.get(ResumeRepository).get(resume.ownerId, resume._id)).data,
+    ).toEqual(source);
   });
 });

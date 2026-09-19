@@ -1,3 +1,5 @@
+import TailoringStages from './TailoringStages';
+import { analysisPath, variantPath } from '../lib/tailoring';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
@@ -119,8 +121,9 @@ export function ActivitySteps({ activity }: { activity: Activity }) {
                 )}
                 {key === 'approval' && state === 'active' && (
                   <p className="hint">
-                    Your resume is ready below. Approve it only after checking
-                    the content.
+                    {activity.kind === 'tailoring'
+                      ? 'Review the suggestions on the next screen, then approve your updated resume.'
+                      : 'Your resume is ready below. Approve it only after checking the content.'}
                   </p>
                 )}
               </div>
@@ -238,10 +241,24 @@ export default function WorkflowActivity({
     activity.status !== 'completed'
   )
     return <Navigate to={`/resumes/uploads/${id}/review`} replace />;
-  if (activity && pathname.startsWith('/activity/'))
+  if (
+    activity &&
+    (pathname.startsWith('/activity/') ||
+      pathname.startsWith('/tailoring/activity/'))
+  )
     return <Navigate to={activityHref(activity)} replace />;
   return (
     <div className="workflow-page">
+      {activity?.kind === 'tailoring' && (
+        <TailoringStages
+          analysis={analysisPath(id)}
+          version={
+            activity.variantId
+              ? variantPath(activity.resumeId, activity.variantId)
+              : undefined
+          }
+        />
+      )}
       <Link
         className="text-button"
         to={activity?.kind === 'tailoring' ? '/tailoring' : '/resumes'}
@@ -292,9 +309,11 @@ export default function WorkflowActivity({
           {activity.variantId && (
             <Link
               className="action-link"
-              to={`/tailoring?resume=${activity.resumeId}&variant=${activity.variantId}`}
+              to={`${variantPath(activity.resumeId, activity.variantId)}/${activity.status === 'completed' ? 'resume' : 'suggestions'}`}
             >
-              Review tailored resume
+              {activity.status === 'completed'
+                ? 'Open updated resume'
+                : 'Review suggestions'}
             </Link>
           )}
           {activity.status === 'completed' && activity.kind === 'parsing' && (

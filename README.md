@@ -57,7 +57,9 @@ Browser tests use synthetic data, a random disposable database and a local deter
 
 [PROJECT.md](PROJECT.md) defines product behavior. [PLAN.md](PLAN.md) tracks implementation, PRs, verification and pending live evaluation. [AGENT.md](AGENT.md) contains agent guidance and installed skill routing.
 
-Use **Resumes** to list, upload, edit, export or delete source resumes, and **Tailoring** to select a saved resume and tailor it to a job. Deleting a resume also deletes its contact details, tailored versions and workflow history.
+Use **Resumes** to list, upload, edit, export or delete source resumes. Deleting a resume also deletes its contact details, tailored versions and workflow history.
+
+Use **Tailoring** to select a saved resume and paste a job description or import a public HTTPS job URL. Review the description for identifying details, then follow the live resume/job analysis screen. On the suggestions screen, select changes individually and apply them. The updated resume opens separately for inline editing, approval and PDF/DOCX export. Source resumes remain unchanged; previous tailored versions can be reopened from the tailoring section. Pages requiring sign-in or JavaScript may need their description pasted manually.
 
 Successful uploads immediately open their redacted text for review. Loading shows a progress indicator and automatically displays text when ready; failed loads can be retried on the same page. Approving it opens the live workflow activity page. Follow preparation, extraction, review, loop attempts and retries there; the navigation bell reopens active work. Schema processing stays internal, and you approve or reject only parsed resume content. Appearance supports Light, Dark and System (the default).
 

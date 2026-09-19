@@ -1,3 +1,4 @@
+import { suggestions, applySuggestions } from './suggestions';
 import { analysisSchema, RESUME_ANALYSIS, JOB_ANALYSIS } from './analysis';
 import type { Analysis } from './analysis';
 import type { StepId } from '../activity/activity.types';
@@ -34,6 +35,8 @@ export interface Variant {
   sourceRevision: number;
   schemaVersion: number;
   sourceData: ResumeData;
+  proposalData?: ResumeData;
+  appliedSuggestionIds?: string[];
   analyses?: { resume: Analysis; job: Analysis };
   data: ResumeData;
   revision: number;
@@ -86,7 +89,14 @@ export class TailoringService {
     const resume = await this.resumes.get(ownerId, resumeId);
     const variant = await this.variants.findOne({ _id: id, ownerId, resumeId });
     if (!variant) throw new NotFoundException('Variant not found');
-    return { ...variant, stale: variant.sourceRevision !== resume.revision };
+    return {
+      ...variant,
+      suggestions: suggestions(
+        variant.sourceData,
+        variant.proposalData ?? variant.data,
+      ),
+      stale: variant.sourceRevision !== resume.revision,
+    };
   }
   async start(ownerId: string, resumeId: string, input: unknown) {
     const body = createSchema.safeParse(input);
@@ -259,6 +269,7 @@ export class TailoringService {
         sourceData: resume.data,
         analyses,
         data: candidate,
+        proposalData: candidate,
         revision: 0,
         status: 'review_required',
         judge,
@@ -360,7 +371,41 @@ export class TailoringService {
       );
     }
   }
-  async update(ownerId: string, resumeId: string, id: string, input: unknown) {
+  async apply(ownerId: string, resumeId: string, id: string, input: unknown) {
+    const parsed = z
+      .object({
+        revision: z.number().int().min(0),
+        suggestionIds: z.array(z.string().max(200)).max(1000),
+      })
+      .strict()
+      .safeParse(input);
+    if (!parsed.success)
+      throw new BadRequestException('Invalid suggestion selection');
+    const variant = await this.get(ownerId, resumeId, id);
+    if (variant.revision !== parsed.data.revision)
+      throw new ConflictException(
+        'Variant changed; reopen before applying suggestions',
+      );
+    const data = applySuggestions(
+      variant.sourceData,
+      variant.proposalData ?? variant.data,
+      parsed.data.suggestionIds,
+    );
+    return this.update(
+      ownerId,
+      resumeId,
+      id,
+      { revision: parsed.data.revision, data, approve: false },
+      parsed.data.suggestionIds,
+    );
+  }
+  async update(
+    ownerId: string,
+    resumeId: string,
+    id: string,
+    input: unknown,
+    appliedSuggestionIds?: string[],
+  ) {
     const body = editSchema.safeParse(input);
     if (!body.success) throw new BadRequestException('Invalid variant edit');
     const variant = await this.get(ownerId, resumeId, id);
@@ -385,6 +430,9 @@ export class TailoringService {
           {
             $set: {
               data: validatedData,
+              ...(appliedSuggestionIds ? { appliedSuggestionIds } : {}),
+              // Keep the original proposal stable across selection and later manual edits.
+              proposalData: variant.proposalData ?? variant.data,
               status: body.data.approve ? 'reviewed' : 'review_required',
               updatedAt: new Date(),
             },

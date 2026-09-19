@@ -56,6 +56,31 @@ export class ActivityService {
       ),
     };
   }
+  private savedTailoring(variant: Variant, id: string): ActivityView {
+    const steps: StepRun[] = variant.analyses
+      ? (['resume', 'job'] as const).map((kind) => ({
+          step: kind === 'resume' ? 'resume_analysis' : 'job_analysis',
+          attempt: 1,
+          status: 'success',
+          retries: 0,
+          received: 0,
+          output: [
+            variant.analyses![kind].summary,
+            ...variant.analyses![kind].findings,
+          ].join('\n'),
+          startedAt: variant.createdAt,
+        }))
+      : [];
+    return {
+      id,
+      resumeId: variant.resumeId,
+      variantId: variant._id,
+      kind: 'tailoring',
+      status: variant.status === 'reviewed' ? 'completed' : 'review_required',
+      steps,
+      createdAt: variant.createdAt,
+    };
+  }
   async list(ownerId: string) {
     const [jobs, tailoring] = await Promise.all([
       this.database.db
@@ -127,20 +152,13 @@ export class ActivityService {
     const variant = await this.database.db
       .collection<Variant>('variants')
       .findOne({ workflowId: id, ownerId });
-    if (variant?.status === 'reviewed')
-      return {
-        id,
-        resumeId: variant.resumeId,
-        variantId: variant._id,
-        kind: 'tailoring',
-        status: 'completed',
-        steps: [],
-        createdAt: variant.createdAt,
-      };
+    if (variant?.status === 'reviewed') return this.savedTailoring(variant, id);
     const activity = await this.database.db
       .collection<TailoringActivity>('workflowActivities')
       .findOne({ _id: id, ownerId, expiresAt: { $gt: new Date() } });
     if (activity) return this.tailoring(activity);
+    if (variant?.appliedSuggestionIds !== undefined)
+      return this.savedTailoring(variant, id);
     throw new NotFoundException(
       'This workflow was deleted or expired. Return to your workspace.',
     );

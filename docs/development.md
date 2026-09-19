@@ -138,3 +138,16 @@ Successful uploads hand their redacted source/revision directly to the review pa
 Job URL import uses authenticated `POST /api/resumes/:resumeId/job-description` with `{ url }`. It permits public HTTPS pages on port 443, checks all resolved IP addresses, pins the checked address for TLS requests and revalidates each redirect (maximum three). The fetch deadline is 10 seconds, the body limit is 1 MB and returned text must be 20–30,000 characters. Only uncompressed HTML/plain text is accepted; authenticated, script-rendered or blocked pages can be pasted manually. Fetching does not invoke models or persist the URL/page. Imported text is locally redacted and must be reviewed before analysis.
 
 Implementation references: [Node request options](https://nodejs.org/docs/latest-v24.x/api/http.html#httprequesturl-options-callback), [Cheerio loading](https://cheerio.js.org/docs/basics/loading/), and [ipaddr.js address ranges](https://github.com/whitequark/ipaddr.js/). Dependencies are direct and pinned by `yarn.lock`.
+
+
+### Application sections and tailoring routes
+
+- `/resumes`: source library and confirmed deletion; `/resumes/upload`, `/resumes/uploads/:uploadId/review`, `/resumes/activity/:workflowId` and `/resumes/:resumeId` handle extraction and source editing.
+- `/tailoring`: resume selector, pasted/imported job description, privacy confirmation and previous versions.
+- `/tailoring/analysis/:workflowId`: live resume analysis, job analysis, wording generation and factual review, including retry/status indicators.
+- `/tailoring/resumes/:resumeId/versions/:variantId/suggestions`: select before/after wording changes.
+- `/tailoring/resumes/:resumeId/versions/:variantId/resume`: applied result, inline edits, approval and downloads.
+
+`POST /api/resumes/:resumeId/variants/:id/apply` accepts `{ revision, suggestionIds }`. IDs come from the variant detail response's `suggestions`; the server reconstructs the result from its original source snapshot and immutable proposal, validates it and saves with revision protection. Empty selection keeps original wording. Unknown/duplicate paths and stale versions are rejected. Reapplying resets approval and replaces manual draft edits. No source data is changed.
+
+Legacy `/uploads/:id/review`, `/activity/:id`, `/tailoring/activity/:id` and resume variant-query links remain compatible. Approval deletes temporary activity records; saved analysis summaries remain accessible through the variant's workflow link. Temporary stream previews are not retained after approval.

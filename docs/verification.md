@@ -6,18 +6,18 @@ The implemented workflow was verified locally with synthetic data. These checks 
 | --- | --- |
 | Backend and frontend builds | Pass |
 | Server ESLint and client Oxlint | Pass |
-| Backend unit tests | 45 pass |
-| MongoDB/HTTP/graph integration tests | 49 pass against an isolated local replica set |
-| React behavior tests | 32 pass |
+| Backend unit tests | 70 pass |
+| MongoDB/HTTP/graph integration tests | 53 pass against an isolated local replica set |
+| React behavior tests | 38 pass |
 | Real Chromium UI journey | Pass: register, upload DOCX, redact, five-attempt mapping review, approve, edit, tailor, approve variant, download PDF/DOCX, preview PDF, restore session, logout |
-| Browser workflow privacy | 15 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
+| Browser workflow privacy | 21 model requests (including one deliberate HTTP 429 retry) captured at a local compatible proxy; known synthetic PII absent; server logs exclude credentials and source values |
 | Navigation/accessibility | Upload opens editable redaction review; approval redirects to activity; notification links, Escape/focus, reload recovery, theme persistence/system changes, keyboard field navigation and 390 px mobile layout checked |
 | Upload formats | Real synthetic PDF, DOCX and legacy DOC fixtures extract; invalid signatures/content, cancellation and size boundaries covered |
 | Exports | PDF Unicode/multipage text and additional sections verified; DOCX contents verified; PDF and LibreOffice-rendered DOCX visually inspected |
 | Retention | Acceptance removes temporary parsing state and PII expiry; cancellation removes draft and PII atomically; unfinished records carry 30-day TTL and expired jobs cannot be opened |
 | Concurrency/recovery | Schema publication races without revalidation, worker leases, consumed interrupted attempts, duplicate completion, stale edits and older-schema preservation covered |
 
-The browser test exercises the production LangChain adapter and LangGraph workflow against a local scripted chat-completions endpoint, not a mocked browser API. It sends actual SSE token chunks, deliberately returns one transient provider failure, and exhausts mapping's five attempts to verify retry/loop status and human review. Schema previews stay empty, incomplete/escaped PII is redacted before progress persistence, cancellation fences streaming writes, cross-user SSE is denied, and revoking a session closes its stream. Tailoring progress disappears on approval; completed parsing links remain usable. The deterministic source and responses contain synthetic details only. Browser screenshots/downloads were generated under `/tmp/cvantage-browser-verification`; they are disposable test artifacts, not persisted application uploads/exports.
+The browser test exercises the production LangChain adapter and LangGraph workflow against a local scripted chat-completions endpoint. The successful job URL import response is intercepted with synthetic page text; network-fetch boundaries are tested separately, and a private URL is rejected through the actual API. It sends actual SSE token chunks, deliberately returns one transient provider failure, and exhausts mapping's five attempts to verify retry/loop status and human review. Schema previews stay empty, incomplete/escaped PII is redacted before progress persistence, cancellation fences streaming writes, cross-user SSE is denied, and revoking a session closes its stream. Tailoring progress disappears on approval; completed parsing links remain usable. The deterministic source and responses contain synthetic details only. Browser screenshots/downloads were generated under `/tmp/cvantage-browser-verification`; they are disposable test artifacts, not persisted application uploads/exports.
 
 ## Pending live evaluation
 
@@ -72,3 +72,9 @@ Full build, both linters, 45 backend unit, 51 database/HTTP and 33 client tests 
 ## Job import and streamed analysis — 2026-09-19
 
 Build/both linters, 67 unit, 52 integration and 35 client tests pass. URL tests cover public-address pinning, private/mixed DNS, redirects, response limits, HTML extraction and local redaction. HTTP tests cover authentication/CSRF boundaries and malformed/PII-bearing analysis rejection. Browser verification uses the actual streaming adapter against a scripted local proxy and displays both new analysis stages before wording/review (17 redacted requests); PDF/DOCX exports pass. Analysis screenshot inspected in `/tmp/cvantage-analysis-browser`. External job sites and live models were not called.
+
+## Tailoring screens and final restructuring — 2026-09-19
+
+Full build, both linters, 70 backend unit tests, 53 database/HTTP integration tests and 38 client tests pass. Selection tests cover subsets, no changes, historical schemas, unknown/duplicate/factual paths, stale revisions, ownership, retained proposals and unchanged source resumes. Client tests verify selected-ID payloads, failed-save behavior and notification routes.
+
+The Chromium journey now covers pasted descriptions and imported text, actual rejection of private URLs, mandatory privacy review, partial streamed resume/job output while each step is active, reload recovery, suggestions and results on separate routes, subset/no-change application, persisted results, approval, both downloads, saved analysis summaries, previous-version links and confirmed/cancelled resource deletion. It captures 21 redacted model requests. Desktop/mobile suggestions and result/input screenshots were inspected in `/tmp/cvantage-tailoring-browser`; browser checks assert no horizontal mobile overflow. External job sites and live providers remain untested. Temporary test services are cleaned up after verification; existing application services are untouched.
